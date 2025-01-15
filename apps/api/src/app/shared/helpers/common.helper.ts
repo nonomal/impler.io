@@ -1,6 +1,7 @@
+import * as Sentry from '@sentry/node';
 import { BadRequestException } from '@nestjs/common';
 import { APIMessages } from '../constants';
-import { PaginationResult, Defaults } from '@impler/shared';
+import { PaginationResult, Defaults, FileMimeTypesEnum } from '@impler/shared';
 
 export function validateNotFound(data: any, entityName: 'upload' | 'template'): boolean {
   if (data) return true;
@@ -56,4 +57,41 @@ export function isDateString(date: string | number): boolean {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   return new Date(date) != 'Invalid Date' && !isNaN(new Date(date));
+}
+
+export function getAssetMimeType(name: string): string {
+  if (name.endsWith('.png')) return FileMimeTypesEnum.PNG;
+  else if (name.endsWith('.jpg')) return FileMimeTypesEnum.JPEG;
+  else if (name.endsWith('.jpeg')) return FileMimeTypesEnum.JPEG;
+  else if (name.endsWith('.webp')) return FileMimeTypesEnum.WEBP;
+  throw new Error('Unsupported file type');
+}
+
+export function generateVerificationCode(): string {
+  let otp = '';
+
+  for (let i = 0; i < 2; i++) {
+    const group = Math.floor(Math.random() * 900) + 100;
+    otp += group.toString();
+  }
+
+  return otp;
+}
+
+export function captureException(error: any) {
+  if (Sentry.isInitialized()) {
+    Sentry.captureException(error);
+  } else console.error(error);
+}
+
+export function isValidXMLMimeType(mimeType: string): boolean {
+  if (
+    mimeType === FileMimeTypesEnum.XML ||
+    mimeType === FileMimeTypesEnum.TEXTXML ||
+    mimeType === FileMimeTypesEnum.APPLICATION_XML
+  ) {
+    return true;
+  }
+
+  return false;
 }

@@ -7,19 +7,20 @@ interface IPhase0Props {
   onValidationSuccess: () => void;
 }
 
-export function Phase0(props: IPhase0Props) {
-  const { onValidationSuccess: goNext } = props;
-  const { isLoading, error, handleValidate, isWidgetOpened } = usePhase0({
+export function Phase0({ onValidationSuccess: goNext }: IPhase0Props) {
+  const { isLoading, error, fileError, isWidgetOpened, handleValidate } = usePhase0({
     goNext,
   });
 
   useEffect(() => {
-    if (isWidgetOpened) handleValidate();
+    if (isWidgetOpened) {
+      handleValidate();
+    }
   }, [isWidgetOpened]);
 
   if (isLoading) return <LoadingOverlay visible={isLoading} />;
 
-  if (error)
+  if (error || fileError) {
     return (
       <Alert
         color="yellow"
@@ -33,9 +34,10 @@ export function Phase0(props: IPhase0Props) {
           border: '.1rem solid #FFC300',
         }}
       >
-        {error.message}
+        {error?.message || fileError}
       </Alert>
     );
+  }
 
   return null;
 }

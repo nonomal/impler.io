@@ -8,6 +8,8 @@ import { DeleteUserPaymentMethod } from './delete-user-payment-method/delete-use
 import { GetTransactionHistory } from './get-transaction-history/get-transaction-history.usecase';
 import { ApplyCoupon } from './apply-coupon/apply-coupon.usecase';
 import { Checkout } from './checkout/checkout.usecase';
+import { Subscription } from './subscription/subscription.usecase';
+import { UpdateSubscriptionPaymentMethod } from './subscription/update-payment-method.usecase';
 
 export const USE_CASES = [
   GetImportCounts,
@@ -20,6 +22,9 @@ export const USE_CASES = [
   GetTransactionHistory,
   ApplyCoupon,
   Checkout,
+  Subscription,
+  UpdatePaymentMethod,
+  UpdateSubscriptionPaymentMethod,
   //
 ];
 
@@ -34,4 +39,6 @@ export {
   GetTransactionHistory,
   ApplyCoupon,
   Checkout,
+  Subscription,
+  UpdateSubscriptionPaymentMethod,
 };

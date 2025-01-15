@@ -1,7 +1,10 @@
+import { ValidationType } from '@impler/client';
+
 export interface IColumn {
   _id: string;
   name: string;
   key: string;
+  description?: string;
   type: string;
   alternateKeys?: string[];
   isRequired?: boolean;
@@ -15,6 +18,7 @@ export interface IColumn {
   selectValues?: string[];
   dateFormats?: string[];
   sequence?: number;
+  validations?: ValidationType[];
   _templateId: string;
 }
 

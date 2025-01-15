@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { CSSProperties } from 'react';
 import { Select as MantineNativeSelect } from '@mantine/core';
 import useStyles from './Select.styles';
 import { ChevronDown } from '../../icons';
@@ -14,10 +14,13 @@ export interface ISelectProps {
   data: string[] | IOption[];
   error?: string;
   required?: boolean;
+  searchable?: boolean;
   width?: string | number;
   value?: string;
+  defaultValue?: string;
   withinPortal?: boolean;
-  onChange?: (value: any) => void;
+  style?: CSSProperties;
+  onChange?: (value: string | null) => void;
 }
 
 export const Select = React.forwardRef<HTMLInputElement, ISelectProps>((props: ISelectProps, ref) => {
@@ -26,10 +29,13 @@ export const Select = React.forwardRef<HTMLInputElement, ISelectProps>((props: I
     placeholder,
     data,
     error,
+    defaultValue,
+    searchable,
     required = true,
     width = '100%',
     onChange,
     value,
+    style,
     withinPortal,
     ...extraProps
   } = props;
@@ -41,8 +47,11 @@ export const Select = React.forwardRef<HTMLInputElement, ISelectProps>((props: I
       title={title}
       placeholder={placeholder}
       data={data}
+      style={style}
       error={error}
       label={title}
+      searchable={searchable}
+      defaultValue={defaultValue}
       rightSection={<ChevronDown />}
       classNames={{
         label: classes.label,

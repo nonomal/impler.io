@@ -10,7 +10,7 @@ import {
 import { DestinationsEnum } from '@impler/shared';
 import { validateNotFound } from '@shared/helpers/common.helper';
 import { DuplicateTemplateCommand } from './duplicate-template.command';
-import { SaveSampleFile } from '@shared/usecases/save-sample-file/save-sample-file.usecase';
+import { SaveSampleFile } from '@shared/usecases';
 
 @Injectable()
 export class DuplicateTemplate {
@@ -56,7 +56,7 @@ export class DuplicateTemplate {
           _templateId,
         },
         // eslint-disable-next-line max-len
-        '-_id name key alternateKeys isRequired isUnique type regex regexDescription selectValues dateFormats sequence defaultValue allowMultiSelect'
+        '-_id name key alternateKeys isRequired isUnique type regex regexDescription selectValues dateFormats sequence defaultValue allowMultiSelect description'
       );
 
       await this.columnRepository.createMany(
@@ -86,7 +86,7 @@ export class DuplicateTemplate {
       });
     }
 
-    if (command.duplicateValidator) {
+    if (command.duplicateValidations) {
       const validator = await this.validatorRepository.findOne({ _templateId }, '-_id onBatchInitialize');
       await this.validatorRepository.create({
         _templateId: newTemplate._id,

@@ -1,16 +1,21 @@
 import { PropsWithChildren } from 'react';
-import { ApiService } from '@impler/client';
-import ImplerContextProvider from '@store/impler.context';
+import { ApiService } from '@api';
+import { WIDGET_TEXTS, WidgetConfig } from '@impler/client';
 import APIContextProvider from '@store/api.context';
 import AppContextProvider from '@store/app.context';
+import { JobsInfoProvider } from '@store/jobinfo.context';
+import ImplerContextProvider from '@store/impler.context';
 
 interface IProviderProps {
   // app-context
   title?: string;
+  texts: typeof WIDGET_TEXTS;
+  config?: WidgetConfig;
   primaryColor: string;
   output?: string;
+  sampleFile?: File | Blob;
   schema?: string;
-  data?: Record<string, string | number>[];
+  data?: string;
   host: string;
   showWidget: boolean;
   setShowWidget: (status: boolean) => void;
@@ -27,7 +32,10 @@ export function Provider(props: PropsWithChildren<IProviderProps>) {
   const {
     api,
     data,
+    config,
     title,
+    sampleFile,
+    texts,
     output,
     projectId,
     templateId,
@@ -48,20 +56,25 @@ export function Provider(props: PropsWithChildren<IProviderProps>) {
       extra={extra}
       authHeaderValue={authHeaderValue}
     >
-      <APIContextProvider api={api}>
-        <AppContextProvider
-          host={host}
-          data={data}
-          title={title}
-          output={output}
-          schema={schema}
-          showWidget={showWidget}
-          primaryColor={primaryColor}
-          setShowWidget={setShowWidget}
-        >
-          {children}
-        </AppContextProvider>
-      </APIContextProvider>
+      <JobsInfoProvider>
+        <APIContextProvider api={api}>
+          <AppContextProvider
+            host={host}
+            data={data}
+            title={title}
+            sampleFile={sampleFile}
+            config={config}
+            texts={texts}
+            output={output}
+            schema={schema}
+            showWidget={showWidget}
+            primaryColor={primaryColor}
+            setShowWidget={setShowWidget}
+          >
+            {children}
+          </AppContextProvider>
+        </APIContextProvider>
+      </JobsInfoProvider>
     </ImplerContextProvider>
   );
 }

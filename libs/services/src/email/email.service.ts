@@ -33,8 +33,116 @@ interface ISendMailOptions {
 interface IForgotPasswordEmailOptions {
   link: string;
 }
+interface IVerificationEmailOptions {
+  otp: string;
+  firstName: string;
+}
+
+interface ITeamnvitationEmailOptions {
+  invitedBy: string;
+  projectName: string;
+  invitationUrl: string;
+}
+interface IAcceptProjectInvitationSenderEmailOptions {
+  invitedBy: string;
+  projectName: string;
+  acceptedBy: string;
+}
+
+interface IAcceptProjectInvitationRecieverEmailOptions {
+  invitedBy: string;
+  projectName: string;
+  acceptedBy: string;
+}
+
+interface IDeclineInvitationEmailOptions {
+  invitedBy: string;
+  projectName: string;
+  declinedBy: string;
+}
 
 const EMAIL_CONTENTS = {
+  VERIFICATION_EMAIL: ({ otp, firstName }: IVerificationEmailOptions) => `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+          body {
+              font-family: Arial, sans-serif;
+              background-color: #f5f5f5;
+              margin: 0;
+              padding: 20px;
+          }
+          .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: white;
+              padding: 30px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+              text-align: center;
+              margin-bottom: 20px;
+          }
+          .header img {
+              width: 150px;
+              margin-bottom: 10px;
+          }
+          .header h1 {
+              font-size: 24px;
+              color: white;
+          }
+          .content {
+              color: #555;
+              line-height: 1.6;
+          }
+          .otp-code {
+              display: inline-block;
+              font-size: 24px;
+              font-weight: bold;
+              color: #4caf50;
+              background-color: #e8f5e9;
+              padding: 5px 10px;
+              border-radius: 4px;
+              margin: 10px 0;
+          }
+          .footer {
+              margin-top: 20px;
+              text-align: center;
+              color: #777;
+          }
+          .footer a {
+              color: #1e88e5;
+              text-decoration: none;
+          }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <img src="https://impler.io/wp-content/uploads/2024/07/Logo-black.png" alt="Impler Logo" />
+              <h1>Verification Code</h1>
+          </div>
+          
+          <div class="content">
+              <p>Hi ${firstName},</p>
+              <p>Your OTP code is <span class="otp-code">${otp}</span>. Please enter this code to verify your identity.</p>
+              <p>If you did not request this code, please ignore this email.</p>
+              <p>Thank you,</p>
+              <p>The Impler Team</p>
+          </div>
+          
+          <div class="footer">
+              <p>If you need help, feel free to <a href="mailto:bhavik@impler.io">contact us</a>.</p>
+          </div>
+      </div>
+  </body>
+  </html>
+    `,
+
   REQUEST_FORGOT_PASSWORD: ({ link }: IForgotPasswordEmailOptions) => `
 		<p>Hi,</p>
 		<p>You have requested to reset your password. Please click on the link below to reset your password.</p>
@@ -307,7 +415,281 @@ const EMAIL_CONTENTS = {
       </div>
 </body>
 </html>
-  `,
+`,
+
+  TEAM_INVITATION_EMAIL: ({ invitedBy, projectName, invitationUrl }: ITeamnvitationEmailOptions) => `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+          body {
+              font-family: Arial, sans-serif;
+              background-color: #f5f5f5;
+              margin: 0;
+              padding: 20px;
+          }
+          .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: white;
+              padding: 30px;
+              border-radius: 8px;
+              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+              text-align: center;
+              margin-bottom: 20px;
+          }
+          .header h1 {
+              font-size: 24px;
+              color: #333;
+          }
+          .content {
+              color: #555;
+              line-height: 1.6;
+          }
+          .button-container {
+              text-align: center;
+              margin-top: 20px;
+          }
+          .button {
+              background-color: #4caf50;
+              color: white;
+              padding: 10px 20px;
+              text-decoration: none;
+              border-radius: 5px;
+              font-size: 16px;
+          }
+          .footer {
+              margin-top: 20px;
+              text-align: center;
+              color: #777;
+          }
+          .centered-text {
+              text-align: center;
+          }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <h1>${invitedBy} invited you to join the project <b>"${projectName}"</b></h1>
+          </div>
+          
+          <div class="content">
+            <p>Hello</p>
+              <p>You have been invited to join the project <strong>${projectName}</strong>. Please click the button below to accept the invitation.</p>
+              
+              <div class="button-container">
+                  <a href="${invitationUrl}" class="button">Accept Invitation</a>
+              </div>
+              
+          </div>
+       <p class="centered-text">If you don't know about this request, please ignore this email.</p>   
+      </div>
+  </body>
+  </html>`,
+
+  ACCEPT_PROJECT_INVITATION_SENDER_EMAIL: ({
+    invitedBy,
+    projectName,
+    acceptedBy,
+  }: IAcceptProjectInvitationSenderEmailOptions) =>
+    `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        .logo {
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .logo span {
+            color: purple;
+        }
+        h1 {
+            color: #333;
+            font-size: 20px;
+        }
+        p, ul {
+            color: #555;
+            line-height: 1.6;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        
+        .contact {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><img src="https://impler.io/wp-content/uploads/2024/07/Logo-black.png" style="width: 150px;" alt="Impler Logo" /></div>
+        <h1>Project Invitation Accepted: ${projectName}</h1>
+        <p>${acceptedBy} has accepted the invitation to join the project.</p>
+        <ul>
+            <li><strong>Project Name:</strong> ${projectName}</li>
+            <li><strong>Invited By:</strong> ${invitedBy}</li>
+            <li><strong>Accepted By:</strong> ${acceptedBy}</li>
+        </ul>
+       
+        <div class="contact">
+            <p>Need any help? <a href="mailto:support@impler.io">Contact us</a></p>
+        </div>
+    </div>
+</body>
+</html>`,
+
+  ACCEPT_PROJECT_INVITATION_RECIEVER_EMAIL: ({
+    invitedBy,
+    projectName,
+    acceptedBy,
+  }: IAcceptProjectInvitationRecieverEmailOptions) =>
+    `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 20px;
+    }
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 30px;
+        border-radius: 8px;
+    }
+    .logo {
+        color: #333;
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+    .logo span {
+        color: purple;
+    }
+    h1 {
+        color: #333;
+        font-size: 20px;
+    }
+    p, ul {
+        color: #555;
+        line-height: 1.6;
+    }
+    ul {
+        padding-left: 20px;
+    }
+    
+    .contact {
+        margin-top: 30px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="logo"><img src="https://impler.io/wp-content/uploads/2024/07/Logo-black.png" style="width: 150px;" alt="Impler Logo" /></div>
+    <h1>Project Invitation Accepted: ${projectName}</h1>
+    <p>You have Successfully join the project.</p>
+    <ul>
+        <li><strong>Project Name:</strong> ${projectName}</li>
+        <li><strong>Invited By:</strong> ${invitedBy}</li>
+        <li><strong>Accepted By:</strong> ${acceptedBy}</li>
+    </ul>
+   
+    <div class="contact">
+        <p>Need any help? <a href="mailto:support@impler.io">Contact us</a></p>
+    </div>
+</div>
+</body>
+</html>`,
+  DECLINE_INVITATION_EMAIL: ({ invitedBy, projectName, declinedBy }: IDeclineInvitationEmailOptions) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        .logo {
+            color: #333;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .logo span {
+            color: purple;
+        }
+        h1 {
+            color: #333;
+            font-size: 20px;
+        }
+        p, ul {
+            color: #555;
+            line-height: 1.6;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        
+        .contact {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo"><img src="https://impler.io/wp-content/uploads/2024/07/Logo-black.png" style="width: 150px;" alt="Impler Logo" /></div>
+        <h1>Project Invitation Declined: ${projectName}</h1>
+        <p>${declinedBy} has declined the invitation to join the project.</p>
+        <ul>
+            <li><strong>Project Name:</strong> ${projectName}</li>
+            <li><strong>Invited By:</strong> ${invitedBy}</li>
+            <li><strong>Declined By:</strong> ${declinedBy}</li>
+        </ul>
+        
+        <div class="contact">
+            <p>Need any help? <a href="mailto:support@impler.io">Contact us</a></p>
+        </div>
+    </div>
+</body>
+</html>`,
 };
 
 type EmailContents =
@@ -326,6 +708,26 @@ type EmailContents =
   | {
       type: 'ERROR_EXECUTING_CODE';
       data: IExecutionErrorEmailOptions;
+    }
+  | {
+      type: 'VERIFICATION_EMAIL';
+      data: IVerificationEmailOptions;
+    }
+  | {
+      type: 'TEAM_INVITATION_EMAIL';
+      data: ITeamnvitationEmailOptions;
+    }
+  | {
+      type: 'ACCEPT_PROJECT_INVITATION_SENDER_EMAIL';
+      data: IAcceptProjectInvitationSenderEmailOptions;
+    }
+  | {
+      type: 'ACCEPT_PROJECT_INVITATION_RECIEVER_EMAIL';
+      data: IAcceptProjectInvitationRecieverEmailOptions;
+    }
+  | {
+      type: 'DECLINE_INVITATION_EMAIL';
+      data: IDeclineInvitationEmailOptions;
     };
 
 export abstract class EmailService {

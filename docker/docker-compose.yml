@@ -1,5 +1,6 @@
 version: "3"
 services:
+
   mongodb:
     image: mongo
     container_name: mongodb
@@ -15,9 +16,10 @@ services:
     restart: unless-stopped
     networks:
       - impler
+
   api:
     privileged: true
-    image: "ghcr.io/implerhq/impler/api:0.21.1"
+    image: "ghcr.io/implerhq/impler/api:0.28.0"
     depends_on:
       - mongodb
       - rabbitmq
@@ -44,12 +46,14 @@ services:
       SES_SECRET_ACCESS_KEY: ${SES_SECRET_ACCESS_KEY}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM}
     ports:
       - "3000:3000"
     networks:
       - impler
+
   queue-manager:
-    image: "ghcr.io/implerhq/impler/queue-manager:0.21.1"
+    image: "ghcr.io/implerhq/impler/queue-manager:0.28.0"
     depends_on:
       - api
       - rabbitmq
@@ -59,14 +63,22 @@ services:
       MONGO_URL: ${MONGO_URL}
       RABBITMQ_CONN_URL: ${RABBITMQ_CONN_URL}
       S3_REGION: ${S3_REGION}
+      API_ROOT_URL: ${API_ROOT_URL}
       S3_LOCAL_STACK: ${S3_LOCAL_STACK}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      SES_REGION: ${SES_REGION}
+      SES_ACCESS_KEY_ID: ${SES_ACCESS_KEY_ID}
+      SES_SECRET_ACCESS_KEY: ${SES_SECRET_ACCESS_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME}
+      ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM}
     networks:
       - impler
+
   widget:
-    image: "ghcr.io/implerhq/impler/widget:0.21.1"
+    image: "ghcr.io/implerhq/impler/widget:0.28.0"
     depends_on:
       - api
     container_name: widget
@@ -79,10 +91,11 @@ services:
       - 3500:3500
     networks:
       - impler
+
   embed:
     depends_on:
       - widget
-    image: "ghcr.io/implerhq/impler/embed:0.21.1"
+    image: "ghcr.io/implerhq/impler/embed:0.28.0"
     container_name: embed
     environment:
       WIDGET_URL: ${WIDGET_BASE_URL}
@@ -90,10 +103,11 @@ services:
       - 4701:4701
     networks:
       - impler
+
   web:
     depends_on:
       - api
-    image: "ghcr.io/implerhq/impler/web:0.21.1"
+    image: "ghcr.io/implerhq/impler/web:0.28.0"
     container_name: web
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${API_ROOT_URL}
@@ -105,6 +119,7 @@ services:
       - 4200:4200
     networks:
       - impler
+  
   rabbitmq:
     image: rabbitmq:3-alpine
     container_name: 'rabbitmq'
@@ -118,7 +133,37 @@ services:
       retries: 1
     networks:
       - impler
+
+  minio:
+    image: minio/minio
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: impler
+      MINIO_ROOT_PASSWORD: implers3cr3t
+    ports:
+      - 9000:9000
+      - 9001:9001
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 impler implers3cr3t;
+      /usr/bin/mc mb myminio/impler;
+      exit 0;
+      "
+
 volumes:
   mongodb: ~
+
 networks:
   impler:

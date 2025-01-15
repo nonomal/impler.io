@@ -18,6 +18,8 @@ export const variables = {
   maxColorNumber: 255,
   closeDelayInMS: 100,
   implerWebsite: 'https://impler.io?utm_source=widget',
+  LIMIT_5_MB: 5 * 1024 * 1024,
+  SHOW_IMAGE_ALERT_STORAGE_KEY: 'showImageAlert',
 };
 
 export const AMPLITUDE = {
@@ -30,5 +32,104 @@ export const AMPLITUDE = {
   UPLOAD_AGAIN: 'upload again',
   RESET: 'reset',
   RECORDS: 'records',
+  IMAGE_PAYLOAD: 'Image payload',
+  IMAGE_SELECTED: 'Image selected',
+  HIDE_IMAGE_INFO: 'Hide image info',
   RECORDS_DELETED: 'Records deleted',
+  IMPORT_INTENT: 'Import Intent',
 };
+
+export const keysToOmit = new Set([
+  'rss > channel > atom:id',
+  'rss > $ > xmlns:opensearch',
+  'rss > $ > xmlns:blogger',
+  'rss > $ > xmlns:georss',
+  'rss > $ > xmlns:gd',
+  'rss > $ > xmlns:thr',
+  'rss',
+  'rss > $',
+  'rss > $ > xmlns:content',
+  'rss > $ > xmlns:rdf',
+  'rss > $ > xmlns:itunes',
+  'rss > $ > xmlns:media',
+  'rss > $ > xmlns:dc',
+  'rss > $ > xmlns:gml',
+  'rss > $ > xmlns:taxo',
+  'rss > $ > xmlns:geo',
+  'rss > $ > version',
+  'rss > $ > xmlns:atom',
+  'rss > channel > atom:link > $ > type',
+  'rss > channel > atom:link > $ > rel',
+  'rss > channel > atom:link > $ > href',
+  'rss > $ > xmlns:content',
+  'rss > $ > xmlns:atom',
+  'rss > $ > version',
+  'rss > $ > xmlns:wfw',
+  'rss > $ > xmlns:sy',
+  'rss > $ > xmlns:slash',
+  'feed > $ > xmlns',
+  'feed > $ > xmlns:media',
+  'rss',
+  'rss > $',
+  'rss > channel',
+  'rss > channel[]',
+  'rss > channel[] > item',
+  'rss > channel[] > item[]',
+  'rss > channel[] > item[] > guid',
+  'rss > channel[] > item[] > guid[]',
+  'rss > channel[] > item[] > guid[] > _',
+  'rss > channel[] > item[] > guid[] > $',
+  'rss > channel[] > item[] > guid[] > $ > isPermaLink',
+  'rss > channel[] > atom:link',
+  'rss > channel[] > atom:link[] > $',
+  'rss > channel[] > atom:link[] > $ > rel',
+  'rss > channel[] > atom:link[] > $ > type',
+  'rss > channel[] > atom:link[] > $ > href',
+]);
+
+export const enum AUTOIMPORTSCHEDULERFREQUENCY {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly',
+}
+export const autoImportSchedulerFrequency: AUTOIMPORTSCHEDULERFREQUENCY[] = [
+  AUTOIMPORTSCHEDULERFREQUENCY.DAILY,
+  AUTOIMPORTSCHEDULERFREQUENCY.WEEKLY,
+  AUTOIMPORTSCHEDULERFREQUENCY.MONTHLY,
+  AUTOIMPORTSCHEDULERFREQUENCY.YEARLY,
+];
+export const weekDays = [
+  { short: 'S', full: 'Sunday' },
+  { short: 'M', full: 'Monday' },
+  { short: 'T', full: 'Tuesday' },
+  { short: 'W', full: 'Wednesday' },
+  { short: 'T', full: 'Thursday' },
+  { short: 'F', full: 'Friday' },
+  { short: 'S', full: 'Saturday' },
+];
+export const months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+export const positionMap: { [key: string]: string } = {
+  First: '1',
+  Second: '2',
+  Third: '3',
+  Fourth: '4',
+  Last: 'L',
+};
+
+export const monthlyDayPositions = ['First', 'Second', 'Third', 'Fourth', 'Last'];
+export const yearlyDayPositions = ['First', 'Second', 'Third', 'Fourth', 'Last'];

@@ -4,15 +4,20 @@ import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 
+import { API_KEYS } from '@config';
 import { commonApi } from '@libs/api';
 import { track } from '@libs/amplitude';
-import { API_KEYS, ROUTES } from '@config';
-import { IErrorObject, ILoginResponse } from '@impler/shared';
+import { useAppState } from 'store/app.context';
+import { IErrorObject, ILoginResponse, SCREENS } from '@impler/shared';
+import { handleRouteBasedOnScreenResponse } from '@shared/helpers';
 
 export function useSignin() {
-  const { push } = useRouter();
+  const { push, query } = useRouter();
+  const { setProfileInfo } = useAppState();
   const { register, handleSubmit } = useForm<ISigninData>();
+  const invitationId = query.invitationId as string | undefined;
   const [errorMessage, setErrorMessage] = useState<IErrorObject | undefined>(undefined);
+
   const { mutate: login, isLoading: isLoginLoading } = useMutation<
     ILoginResponse,
     IErrorObject,
@@ -29,9 +34,8 @@ export function useSignin() {
           id: profileData._id,
         },
       });
-      if (data.showAddProject) {
-        push(ROUTES.SIGNIN_ONBOARDING);
-      } else push(ROUTES.HOME);
+      setProfileInfo(profileData);
+      handleRouteBasedOnScreenResponse(data.screen as SCREENS, push, invitationId ? [invitationId] : []);
     },
     onError(error) {
       setErrorMessage(error);
@@ -39,7 +43,7 @@ export function useSignin() {
   });
 
   const onLogin = (data: ISigninData) => {
-    login(data);
+    login({ ...data, invitationId });
   };
 
   return {

@@ -1,34 +1,37 @@
-import { Badge, Flex, Stack } from '@mantine/core';
+import { Badge, Flex, Group, Stack } from '@mantine/core';
 import { useRef, useState, useEffect } from 'react';
 import HotTableClass from '@handsontable/react/hotTableClass';
 
 import { PhasesEnum } from '@types';
 import { logAmplitudeEvent } from '@amplitude';
 import { usePhase3 } from '@hooks/Phase3/usePhase3';
-import { IUpload, numberFormatter, replaceVariablesInString } from '@impler/shared';
+import { IUpload, WIDGET_TEXTS } from '@impler/client';
+import { numberFormatter, replaceVariablesInString } from '@impler/shared';
 
-import { ReviewConfirmModal } from './ReviewConfirmModal';
 import { Table } from 'components/Common/Table';
 import { Footer } from 'components/Common/Footer';
+import { ReviewConfirmModal } from './ReviewConfirmModal';
 
-import { TEXTS } from '@config';
 import { Button } from '@ui/Button';
 import { Pagination } from '@ui/Pagination';
 import { LoadingOverlay } from '@ui/LoadingOverlay';
 import { SegmentedControl } from '@ui/SegmentedControl';
 import { ConfirmModal } from 'components/widget/modals/ConfirmModal';
+import { FindReplaceModal } from 'components/widget/modals/FindReplace';
 
 interface IPhase3Props {
   onNextClick: (uploadData: IUpload, importedData?: Record<string, any>[]) => void;
   onPrevClick: () => void;
+  texts: typeof WIDGET_TEXTS;
 }
 
 export function Phase3(props: IPhase3Props) {
   const tableRef = useRef<HotTableClass>(null);
-  const { onNextClick, onPrevClick } = props;
+  const { onNextClick, onPrevClick, texts } = props;
   const {
     page,
     type,
+    columns,
     headings,
     columnDefs,
     totalPages,
@@ -44,26 +47,32 @@ export function Phase3(props: IPhase3Props) {
     setAllChecked,
     deleteRecords,
     invalidRecords,
-    onConfirmReview,
+    completeImport,
     selectedRowsRef,
+    refetchReviewData,
     isDoReviewLoading,
     isReviewDataLoading,
     selectedRowsCountRef,
+    showFindReplaceModal,
     showAllDataValidModal,
     isDeleteRecordLoading,
-    isConfirmReviewLoading,
     showDeleteConfirmModal,
+    setShowFindReplaceModal,
+    isCompleteImportLoading,
     setShowAllDataValidModal,
     setShowDeleteConfirmModal,
+    hideFindAndReplaceButton,
+    hideDeleteButton,
+    hideCheckBox,
   } = usePhase3({ onNext: onNextClick });
   const tableWrapperRef = useRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement>;
   const [tableWrapperDimensions, setTableWrapperDimentions] = useState({
     height: 200,
     width: 500,
   });
+  const columnDescriptions = columnDefs.map((column) => column.description || '');
 
   useEffect(() => {
-    //  setting wrapper height
     setTableWrapperDimentions({
       height: tableWrapperRef.current.getBoundingClientRect().height - 50,
       width: tableWrapperRef.current.getBoundingClientRect().width,
@@ -72,13 +81,13 @@ export function Phase3(props: IPhase3Props) {
 
   const onReviewConfirmed = () => {
     logAmplitudeEvent('CONFIRM');
-    onConfirmReview();
+    completeImport();
   };
 
   return (
     <>
       <LoadingOverlay
-        visible={isReviewDataLoading || isDoReviewLoading || isConfirmReviewLoading || isDeleteRecordLoading}
+        visible={isReviewDataLoading || isDoReviewLoading || isCompleteImportLoading || isDeleteRecordLoading}
       />
 
       <Stack ref={tableWrapperRef} style={{ flexGrow: 1 }} spacing="xs" align="flex-start">
@@ -86,16 +95,45 @@ export function Phase3(props: IPhase3Props) {
           <SegmentedControl
             value={type}
             onChange={onTypeChange}
-            allDataLength={numberFormatter(totalRecords)}
-            invalidDataLength={numberFormatter(invalidRecords)}
-            validDataLength={numberFormatter(totalRecords - invalidRecords)}
+            items={[
+              {
+                value: 'all',
+                label: replaceVariablesInString(texts.PHASE3.LABEL_ALL_RECORDS, {
+                  records: numberFormatter(totalRecords),
+                }),
+              },
+              {
+                value: 'valid',
+                label: replaceVariablesInString(texts.PHASE3.LABEL_VALID_RECORDS, {
+                  records: numberFormatter(totalRecords - invalidRecords),
+                }),
+              },
+              {
+                value: 'invalid',
+                label: replaceVariablesInString(texts.PHASE3.LABEL_INVALID_RECORDS, {
+                  records: numberFormatter(invalidRecords),
+                }),
+              },
+            ]}
           />
-          <Button color="red" disabled={!selectedRowsRef.current.size} onClick={() => setShowDeleteConfirmModal(true)}>
-            Delete
-            <Badge variant="light" ml="xs" color="red">
-              {numberFormatter(selectedRowsRef.current.size)}
-            </Badge>
-          </Button>
+          <Group spacing="xs">
+            {!hideFindAndReplaceButton && (
+              <Button onClick={() => setShowFindReplaceModal(true)}>{texts.PHASE3.FIND_REPLACE}</Button>
+            )}
+
+            {!hideDeleteButton && (
+              <Button
+                color="red"
+                disabled={!selectedRowsRef.current.size}
+                onClick={() => setShowDeleteConfirmModal(true)}
+              >
+                {texts.COMMON.DELETE}
+                <Badge variant="light" ml="xs" color="red">
+                  {numberFormatter(selectedRowsRef.current.size)}
+                </Badge>
+              </Button>
+            )}
+          </Group>
         </Flex>
         <Table
           ref={tableRef}
@@ -170,17 +208,20 @@ export function Phase3(props: IPhase3Props) {
           headings={headings}
           columnDefs={columnDefs}
           allChecked={allChecked}
+          columnDescriptions={columnDescriptions}
+          hideCheckBox={hideCheckBox}
         />
       </Stack>
       <Pagination page={page} total={totalPages} onChange={onPageChange} />
 
       <Footer
-        primaryButtonLoading={isConfirmReviewLoading}
+        primaryButtonLoading={isCompleteImportLoading}
         active={PhasesEnum.REVIEW}
         onNextClick={reReviewData}
         onPrevClick={onPrevClick}
       />
       <ReviewConfirmModal
+        texts={texts}
         opened={!!showAllDataValidModal}
         onClose={() => setShowAllDataValidModal(false)}
         onConfirm={onReviewConfirmed}
@@ -188,7 +229,7 @@ export function Phase3(props: IPhase3Props) {
       />
       <ConfirmModal
         onCancel={() => setShowDeleteConfirmModal(false)}
-        title={replaceVariablesInString(TEXTS.DELETE_CONFIRMATION.TITLE, {
+        title={replaceVariablesInString(texts.DELETE_RECORDS_CONFIRMATION.TITLE, {
           total: numberFormatter(selectedRowsRef.current.size),
         })}
         onConfirm={() => {
@@ -199,10 +240,19 @@ export function Phase3(props: IPhase3Props) {
             selectedRowsCountRef.current.invalid.size,
           ]);
         }}
-        cancelLabel={TEXTS.DELETE_CONFIRMATION.NO}
-        confirmLabel={TEXTS.DELETE_CONFIRMATION.YES}
+        cancelLabel={texts.DELETE_RECORDS_CONFIRMATION.CANCEL_DELETE}
+        confirmLabel={texts.DELETE_RECORDS_CONFIRMATION.CONFIRM_DELETE}
         opened={!!showDeleteConfirmModal}
-        subTitle={TEXTS.DELETE_CONFIRMATION.SUBTITLE}
+        subTitle={texts.DELETE_RECORDS_CONFIRMATION.DETAILS}
+      />
+      <FindReplaceModal
+        texts={texts}
+        columns={columns}
+        opened={!!showFindReplaceModal}
+        cancelLabel={texts.COMMON.CANCEL}
+        replaceLabel={texts.PHASE3.REPLACE}
+        refetchReviewData={refetchReviewData}
+        onClose={() => setShowFindReplaceModal(false)}
       />
     </>
   );

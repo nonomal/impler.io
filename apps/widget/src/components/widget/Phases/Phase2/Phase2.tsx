@@ -1,24 +1,36 @@
-import { MappingItem } from '@ui/MappingItem';
-import { Footer } from 'components/Common/Footer';
-import useStyles from './Styles';
-import { useEffect, useRef, useState } from 'react';
-import { usePhase2 } from '@hooks/Phase2/usePhase2';
-import { PhasesEnum } from '@types';
 import { Controller } from 'react-hook-form';
+import { useEffect, useRef, useState } from 'react';
+
+import useStyles from './Styles';
+import { PhasesEnum } from '@types';
+import { MappingItem } from '@ui/MappingItem';
+import { WIDGET_TEXTS } from '@impler/client';
 import { MappingHeading } from './MappingHeading';
+import { Footer } from 'components/Common/Footer';
 import { LoadingOverlay } from '@ui/LoadingOverlay';
+import { usePhase2 } from '@hooks/Phase2/usePhase2';
 
 interface IPhase2Props {
   onPrevClick: () => void;
   onNextClick: () => void;
+  texts: typeof WIDGET_TEXTS;
 }
 
 const defaulWrappertHeight = 200;
-export function Phase2(props: IPhase2Props) {
+export function Phase2({ onPrevClick, onNextClick, texts }: IPhase2Props) {
   const { classes } = useStyles();
-  const { onPrevClick, onNextClick } = props;
   const [wrapperHeight, setWrapperHeight] = useState(defaulWrappertHeight);
-  const { headings, mappings, control, onSubmit, onFieldSelect, isInitialDataLoaded, isMappingFinalizing } = usePhase2({
+  const {
+    headings,
+    mappings,
+    control,
+    onSubmit,
+    validateUniqueHeadings,
+    isInitialDataLoaded,
+    isMappingFinalizing,
+    isUploadInfoLoading,
+  } = usePhase2({
+    texts,
     goNext: onNextClick,
   });
   const wrapperRef = useRef<HTMLDivElement>() as React.MutableRefObject<HTMLDivElement>;
@@ -33,10 +45,10 @@ export function Phase2(props: IPhase2Props) {
 
   return (
     <>
-      <LoadingOverlay visible={!isInitialDataLoaded || isMappingFinalizing} />
+      <LoadingOverlay visible={!isInitialDataLoaded || isMappingFinalizing || isUploadInfoLoading} />
       <div style={{ flexGrow: 1 }} ref={wrapperRef}>
         {/* Heading */}
-        <MappingHeading ref={titlesRef} />
+        <MappingHeading texts={texts} ref={titlesRef} />
         {/* Mapping Items */}
         <div
           className={classes.mappingWrapper}
@@ -47,10 +59,13 @@ export function Phase2(props: IPhase2Props) {
           {Array.isArray(mappings) &&
             mappings.map((mappingItem, index) => (
               <Controller
+                control={control}
                 key={mappingItem.key}
                 name={`mappings.${index}.columnHeading`}
-                control={control}
-                render={({ field }) => (
+                rules={{
+                  required: mappingItem.isRequired ? texts.PHASE2.FIELD_REQUIRED_MSG : false,
+                }}
+                render={({ field, fieldState }) => (
                   <MappingItem
                     key={mappingItem.key}
                     options={headings}
@@ -59,9 +74,13 @@ export function Phase2(props: IPhase2Props) {
                     value={field.value}
                     onChange={(value) => {
                       field.onChange(value);
-                      onFieldSelect();
+                      validateUniqueHeadings();
                     }}
                     ref={field.ref}
+                    error={fieldState.error?.message}
+                    mappingNotDoneText={texts.PHASE2.MAPPING_NOT_DONE_TEXT}
+                    mappingDoneText={texts.PHASE2.MAPPING_DONE_TEXT}
+                    mappingPlaceholder={texts.PHASE2.MAPPING_FIELD_PLACEHOLDER}
                   />
                 )}
               />

@@ -5,3 +5,6 @@ export * from './chevron-down.icon';
 export * from './green-check.icon';
 export * from './download.icon';
 export * from './warning.icon';
+export * from './image.icon';
+export * from './back.icon';
+export * from './grid.icon';

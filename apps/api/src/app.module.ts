@@ -14,6 +14,9 @@ import { AuthModule } from './app/auth/auth.module';
 import { EnvironmentModule } from './app/environment/environment.module';
 import { ActivityModule } from './app/activity/activity.module';
 import { UserModule } from './app/user/user.module';
+import { ImportJobsModule } from 'app/import-jobs/import-jobs.module';
+import { TeamModule } from 'app/team/team.module';
+import { AutoImportJobsSchedularModule } from 'app/auto-import-jobs-schedular/auto-import-jobs-schedular.module';
 
 const modules: Array<Type | DynamicModule | Promise<DynamicModule> | ForwardReference> = [
   ProjectModule,
@@ -29,6 +32,9 @@ const modules: Array<Type | DynamicModule | Promise<DynamicModule> | ForwardRefe
   UserModule,
   EnvironmentModule,
   ActivityModule,
+  ImportJobsModule,
+  TeamModule,
+  AutoImportJobsSchedularModule,
 ];
 
 const providers = [Logger];

@@ -12,14 +12,16 @@ import {
   ISchemaColumn,
   IErrorObject,
   IReviewData,
-  IUpload,
   IRecord,
   ReviewDataTypesEnum,
   numberFormatter,
   ColumnDelimiterEnum,
 } from '@impler/shared';
+import { IUpload } from '@impler/client';
 import { SelectEditor } from './SelectEditor';
 import { MultiSelectEditor } from './MultiSelectEditor';
+import { useCompleteImport } from '@hooks/useCompleteImport';
+import { useUploadInfo } from '@hooks/useUploadInfo';
 
 interface IUsePhase3Props {
   onNext: (uploadData: IUpload, importedData?: Record<string, any>[]) => void;
@@ -36,17 +38,20 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
   const [page, setPage] = useState<number>(defaultPage);
   const [headings, setHeadings] = useState<string[]>([]);
   const selectedRowsRef = useRef<Set<number>>(new Set());
+  const [columns, setColumns] = useState<IOption[]>([]);
   const [frozenColumns, setFrozenColumns] = useState<number>(2);
   const selectedRowsCountRef = useRef<{ valid: Set<number>; invalid: Set<number> }>({
     valid: new Set(),
     invalid: new Set(),
   });
-  const { uploadInfo, setUploadInfo, host } = useAppState();
+  const { uploadInfo, setUploadInfo, config } = useAppState();
   const [allChecked, setAllChecked] = useState<boolean>(false);
   const [reviewData, setReviewData] = useState<IRecordExtended[]>([]);
   const [columnDefs, setColumnDefs] = useState<HotItemSchema[]>([]);
   const [totalPages, setTotalPages] = useState<number>(defaultPage);
   const [type, setType] = useState<ReviewDataTypesEnum>(ReviewDataTypesEnum.ALL);
+  const { completeImport, isCompleteImportLoading } = useCompleteImport({ onNext });
+  const [showFindReplaceModal, setShowFindReplaceModal] = useState<boolean | undefined>(undefined);
   const [showAllDataValidModal, setShowAllDataValidModal] = useState<boolean | undefined>(undefined);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState<boolean | undefined>(undefined);
 
@@ -55,34 +60,49 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
     () => api.getColumns(uploadInfo._id),
     {
       onSuccess(data) {
-        let updatedFrozenColumns = 2;
+        let updatedFrozenColumns = 0;
+        const dataColumns: IOption[] = [{ value: '', label: 'All columns' }];
         const newColumnDefs: HotItemSchema[] = [];
-        const newHeadings: string[] = ['*', 'Sr. No.'];
-        newColumnDefs.push({
-          type: 'text',
-          data: 'record.index',
-          readOnly: true,
-          editor: false,
-          renderer: 'check',
-          className: 'check-cell',
-          disableVisualSelection: true,
-        });
-        newColumnDefs.push({
-          type: 'text',
-          data: 'index',
-          readOnly: true,
-          className: 'index-cell',
-          disableVisualSelection: true,
-        });
+        const newHeadings: string[] = [];
+
+        if (!config?.hideCheckBox) {
+          newHeadings.push('*');
+          updatedFrozenColumns++;
+          newColumnDefs.push({
+            type: 'text',
+            data: 'record.index',
+            readOnly: true,
+            editor: false,
+            renderer: 'check',
+            className: 'check-cell',
+            disableVisualSelection: true,
+          });
+        }
+
+        if (!config?.hideSrNo) {
+          newHeadings.push('Sr. No.');
+          updatedFrozenColumns++;
+          newColumnDefs.push({
+            type: 'text',
+            data: 'index',
+            readOnly: true,
+            className: 'index-cell',
+            disableVisualSelection: true,
+          });
+        }
         data.forEach((column: ISchemaColumn) => {
           if (column.isFrozen) updatedFrozenColumns++;
           newHeadings.push(column.name);
+          dataColumns.push({ label: column.name, value: column.key });
+
           const columnItem: HotItemSchema = {
             className: 'htCenter',
             data: `record.${column.key}`,
             allowEmpty: !column.isRequired,
             allowDuplicate: !column.isUnique,
+            description: column.description,
           };
+
           switch (column.type) {
             case ColumnTypesEnum.STRING:
             case ColumnTypesEnum.EMAIL:
@@ -91,6 +111,7 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
               columnItem.renderer = 'custom';
               break;
             case ColumnTypesEnum.SELECT:
+            case ColumnTypesEnum.IMAGE:
               columnItem.type = 'text';
               columnItem.renderer = 'custom';
               columnItem.delimiter = column.delimiter || ColumnDelimiterEnum.COMMA;
@@ -111,6 +132,9 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
                 columnItem.dateFormat = column.dateFormats[variables.baseIndex];
                 columnItem.correctFormat = true;
               }
+              columnItem.datePickerConfig = {
+                yearRange: [1900, 3000],
+              };
               columnItem.renderer = 'custom';
               break;
             default:
@@ -119,25 +143,22 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
           }
           newColumnDefs.push(columnItem);
         });
+        setColumns(dataColumns);
         setHeadings(newHeadings);
         setColumnDefs(newColumnDefs);
         setFrozenColumns(updatedFrozenColumns);
       },
+      enabled: !!uploadInfo?._id,
     }
   );
-  const { refetch: fetchUploadInfo } = useQuery<IUpload, IErrorObject, IUpload, [string]>(
-    [`getUpload:${uploadInfo._id}`],
-    () => api.getUpload(uploadInfo._id),
-    {
-      enabled: false,
-      onSuccess(data) {
-        setUploadInfo(data);
-        if (data.invalidRecords === variables.baseIndex && data.totalRecords) {
-          setShowAllDataValidModal(true);
-        }
-      },
-    }
-  );
+  const { fetchUploadInfo } = useUploadInfo({
+    enabled: false,
+    onNext: (data) => {
+      if (data.invalidRecords === variables.baseIndex && data.totalRecords) {
+        setShowAllDataValidModal(true);
+      }
+    },
+  });
   const { mutate: refetchReviewData, isLoading: isReviewDataLoading } = useMutation<
     IReviewData,
     IErrorObject,
@@ -185,41 +206,15 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
     IErrorObject,
     void,
     [string, string]
-  >([`review`, uploadInfo._id], () => api.doReivewData(uploadInfo._id), {
+  >([`re-review`, uploadInfo._id], () => api.doReivewData(uploadInfo._id), {
     cacheTime: 0,
     staleTime: 0,
+    enabled: !!uploadInfo._id,
     onSuccess() {
       fetchUploadInfo();
       refetchReviewData([page, type]);
       selectedRowsRef.current = new Set();
       selectedRowsCountRef.current = { valid: new Set(), invalid: new Set() };
-    },
-    onError(error: IErrorObject) {
-      notifier.showError({ message: error.message, title: error.error });
-    },
-  });
-  const { isLoading: isConfirmReviewLoading, mutate: confirmReview } = useMutation<
-    {
-      uploadInfo: IUpload;
-      importedData: Record<string, any>[];
-    },
-    IErrorObject,
-    void,
-    [string]
-  >([`confirm:${uploadInfo._id}`], () => api.confirmReview(uploadInfo._id), {
-    onSuccess(uploadData) {
-      logAmplitudeEvent('RECORDS', {
-        type: 'invalid',
-        host,
-        records: uploadData.uploadInfo.invalidRecords,
-      });
-      logAmplitudeEvent('RECORDS', {
-        type: 'valid',
-        host,
-        records: uploadData.uploadInfo.totalRecords - uploadData.uploadInfo.invalidRecords,
-      });
-      setUploadInfo(uploadData.uploadInfo);
-      onNext(uploadData.uploadInfo, uploadData.importedData);
     },
     onError(error: IErrorObject) {
       notifier.showError({ message: error.message, title: error.error });
@@ -279,6 +274,7 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
   return {
     page,
     type,
+    columns,
     headings,
     totalPages,
     columnDefs,
@@ -291,19 +287,25 @@ export function usePhase3({ onNext }: IUsePhase3Props) {
     setReviewData,
     setAllChecked,
     frozenColumns,
+    completeImport,
     selectedRowsRef,
     isDoReviewLoading,
     isReviewDataLoading,
     selectedRowsCountRef,
+    showFindReplaceModal,
     showAllDataValidModal,
     isDeleteRecordLoading,
-    isConfirmReviewLoading,
+    isCompleteImportLoading,
     showDeleteConfirmModal,
+    setShowFindReplaceModal,
     setShowAllDataValidModal,
     setShowDeleteConfirmModal,
     reviewData: reviewData || [],
-    onConfirmReview: confirmReview,
     totalRecords: uploadInfo.totalRecords ?? undefined,
     invalidRecords: uploadInfo.invalidRecords ?? undefined,
+    refetchReviewData: () => refetchReviewData([page, type]),
+    hideFindAndReplaceButton: config?.hideFindAndReplaceButton,
+    hideDeleteButton: config?.hideDeleteButton,
+    hideCheckBox: config?.hideCheckBox,
   };
 }

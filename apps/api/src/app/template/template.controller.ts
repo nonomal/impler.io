@@ -1,11 +1,24 @@
 import { Response } from 'express';
-import { ApiOperation, ApiTags, ApiOkResponse, ApiSecurity, ApiBody } from '@nestjs/swagger';
-import { Body, Controller, Delete, Get, Param, ParseArrayPipe, Post, Put, Res, UseGuards } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiOperation, ApiTags, ApiOkResponse, ApiSecurity, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseArrayPipe,
+  Post,
+  Put,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 
 import { UploadEntity } from '@impler/dal';
-import { ACCESS_KEY_NAME } from '@impler/shared';
+import { ACCESS_KEY_NAME, IJwtPayload, IntegrationEnum } from '@impler/shared';
 import { JwtAuthGuard } from '@shared/framework/auth.gaurd';
-import { AddColumnCommand } from 'app/column/commands/add-column.command';
 import { ValidateMongoId } from '@shared/validations/valid-mongo-id.validation';
 import { DocumentNotFoundException } from '@shared/exceptions/document-not-found.exception';
 
@@ -49,6 +62,7 @@ import { DuplicateTemplateRequestDto } from './dtos/duplicate-template-request.d
 import { UpdateValidationResponseDto } from './dtos/update-validation-response.dto';
 import { UpdateValidationsRequestDto } from './dtos/update-validations-request.dto';
 import { UpdateCustomizationRequestDto } from './dtos/update-customization-request.dto';
+import { UserSession } from '@shared/framework/user.decorator';
 
 @Controller('/template')
 @ApiTags('Template')
@@ -83,21 +97,32 @@ export class TemplateController {
     type: TemplateResponseDto,
   })
   async getTemplateDetailsRoute(
-    @Param('templateId', ValidateMongoId) templateId: string
+    @UserSession() user: IJwtPayload,
+    @Param('templateId', ValidateMongoId) _templateId: string
   ): Promise<TemplateResponseDto> {
-    return this.getTemplateDetails.execute(templateId);
+    return this.getTemplateDetails.execute({
+      _templateId,
+      _projectId: user._projectId,
+    });
   }
 
   @Post(':templateId/sample')
   @ApiOperation({
     summary: 'Get Template Sample',
   })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
   async downloadSampleRoute(
-    @Param('templateId', ValidateMongoId) templateId: string,
+    @Param('templateId', ValidateMongoId) _templateId: string,
     @Body() data: DownloadSampleDto,
-    @Res() res: Response
+    @Res() res: Response,
+    @UploadedFile('file') images: Express.Multer.File
   ) {
-    const { ext, file, type } = await this.downloadSample.execute(templateId, data);
+    const { ext, file, type } = await this.downloadSample.execute({
+      data,
+      images,
+      _templateId,
+    });
     res.header(`Content-disposition', 'attachment; filename=sample.${ext}`);
     res.type(type);
 
@@ -129,6 +154,7 @@ export class TemplateController {
         callbackUrl: body.callbackUrl,
         chunkSize: body.chunkSize,
         name: body.name,
+        integration: body.integration as IntegrationEnum,
       })
     );
   }
@@ -161,6 +187,7 @@ export class TemplateController {
     const document = await this.updateTemplateUsecase.execute(
       UpdateTemplateCommand.create({
         name: body.name,
+        mode: body.mode,
       }),
       templateId
     );
@@ -177,30 +204,17 @@ export class TemplateController {
   })
   @ApiBody({ type: [ColumnRequestDto] })
   async updateTemplateColumnRoute(
+    @UserSession() user: IJwtPayload,
     @Param('templateId', ValidateMongoId) _templateId: string,
     @Body(new ParseArrayPipe({ items: ColumnRequestDto, stopAtFirstError: false })) body: ColumnRequestDto[]
   ): Promise<ColumnResponseDto[]> {
     return this.updateTemplateColumns.execute(
-      body.map((columnData) =>
-        AddColumnCommand.create({
-          key: columnData.key,
-          alternateKeys: columnData.alternateKeys,
-          isRequired: columnData.isRequired,
-          isUnique: columnData.isUnique,
-          isFrozen: columnData.isFrozen,
-          name: columnData.name,
-          regex: columnData.regex,
-          regexDescription: columnData.regexDescription,
-          selectValues: columnData.selectValues,
-          dateFormats: columnData.dateFormats,
-          sequence: columnData.sequence,
-          _templateId,
-          type: columnData.type,
-          delimiter: columnData.delimiter,
-          allowMultiSelect: columnData.allowMultiSelect,
-        })
-      ),
-      _templateId
+      body.map((columnData) => ({
+        _templateId,
+        ...columnData,
+      })),
+      _templateId,
+      user.email
     );
   }
 

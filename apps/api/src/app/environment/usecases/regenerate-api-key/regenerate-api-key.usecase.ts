@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { IJwtPayload } from '@impler/shared';
+import { IJwtPayload, UserRolesEnum } from '@impler/shared';
 import { EnvironmentRepository } from '@impler/dal';
 import { AuthService } from 'app/auth/services/auth.service';
 import { GenerateUniqueApiKey } from '../generate-api-key/generate-api-key.usecase';
@@ -7,9 +7,9 @@ import { GenerateUniqueApiKey } from '../generate-api-key/generate-api-key.useca
 @Injectable()
 export class RegenerateAPIKey {
   constructor(
+    private authService: AuthService,
     private generateUniqueApiKey: GenerateUniqueApiKey,
-    private environmentRepository: EnvironmentRepository,
-    private authService: AuthService
+    private environmentRepository: EnvironmentRepository
   ) {}
 
   async execute(userInfo: IJwtPayload) {
@@ -31,7 +31,9 @@ export class RegenerateAPIKey {
         email: userInfo.email,
         firstName: userInfo.firstName,
         lastName: userInfo.lastName,
+        role: userInfo.role as UserRolesEnum,
         profilePicture: userInfo.profilePicture,
+        isEmailVerified: userInfo.isEmailVerified,
         accessToken,
       },
       userInfo._projectId

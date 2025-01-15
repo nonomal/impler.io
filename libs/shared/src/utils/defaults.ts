@@ -10,6 +10,7 @@ export const Defaults = {
   CHUNK_SIZE: 100,
   DATE_FORMATS: ['DD/MM/YYYY'],
   DATE_FORMAT: 'DD/MM/YYYY',
+  FORMATTED_DATE: ['DD MMM YYYY'],
 };
 
 export const DEFAULT_VALUES = [
@@ -58,3 +59,33 @@ export const DEFAULT_VALUES_OBJ = {
   '<<false>>': false,
   '<<uuid>>': uuidv4,
 };
+
+export const DEFAULT_KEYS_OBJ = {
+  null: '<<null>>',
+  undefined: '<<undefined>>',
+  'Empty String': '<<>>',
+  'Empty Array ([])': '<<[]>>',
+  'Boolean true': '<<true>>',
+  'Boolean false': '<<false>>',
+  'UUID v4': '<<uuid>>',
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export enum SCREENS {
+  VERIFY = 'verify',
+  ONBOARD = 'onboard',
+  HOME = 'home',
+  INVIATAION = 'invitation',
+}
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export enum EMAIL_SUBJECT {
+  ERROR_SENDING_BUBBLE_DATA = '🛑 Encountered error while sending data to Bubble in',
+  ERROR_EXECUTING_VALIDATION_CODE = '🛑 Encountered error while executing validation code in',
+  ERROR_SENDING_WEBHOOK_DATA = '🛑 Encountered error while sending webhook data in',
+  VERIFICATION_CODE = 'Your Verification Code for Impler',
+  RESET_PASSWORD = 'Reset Password | Impler',
+  PROJECT_INVITATION = 'You Have Invited to',
+  INVITATION_ACCEPTED = 'Invitation Accepted Successfully',
+  INVITATION_DECLINED = 'Has Declined the Invitation',
+}
