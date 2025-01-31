@@ -10,6 +10,7 @@ import {
 } from '@impler/shared';
 import { PaymentAPIService } from '@impler/services';
 import { QueueService } from '@shared/services/queue.service';
+import { AmplitudeService } from '@shared/services/amplitude.service';
 import { DalService, TemplateEntity, UploadRepository } from '@impler/dal';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class StartProcess {
     private dalService: DalService,
     private queueService: QueueService,
     private uploadRepository: UploadRepository,
+    private amplitudeService: AmplitudeService,
     private paymentAPIService: PaymentAPIService
   ) {}
 
@@ -26,7 +28,9 @@ export class StartProcess {
     let importedData;
     const destination = (uploadInfo._templateId as unknown as TemplateEntity)?.destination;
     const userEmail = await this.uploadRepository.getUserEmailFromUploadId(_uploadId);
-    const dataProcessingAllowed = await this.paymentAPIService.checkEvent(userEmail);
+    const dataProcessingAllowed = await this.paymentAPIService.checkEvent({
+      email: userEmail,
+    });
 
     if (
       dataProcessingAllowed &&
@@ -39,22 +43,33 @@ export class StartProcess {
       });
     }
 
-    // if template destination has callbackUrl then start sending data to the callbackUrl
-    if (destination) {
-      uploadInfo = await this.uploadRepository.findOneAndUpdate(
-        { _id: _uploadId },
-        { status: UploadStatusEnum.PROCESSING }
-      );
-    } else {
-      // else complete the upload process
+    // if destination is frontend or not defined then complete the upload process
+    if (
+      !destination ||
+      (uploadInfo._templateId as unknown as TemplateEntity).destination === DestinationsEnum.FRONTEND
+    ) {
       uploadInfo = await this.uploadRepository.findOneAndUpdate(
         { _id: _uploadId },
         { status: UploadStatusEnum.COMPLETED }
       );
+    } else {
+      // if template destination has callbackUrl then start sending data to the callbackUrl
+      uploadInfo = await this.uploadRepository.findOneAndUpdate(
+        { _id: _uploadId },
+        { status: UploadStatusEnum.PROCESSING }
+      );
     }
+
+    this.amplitudeService.recordsImported(userEmail, {
+      records: uploadInfo.totalRecords,
+      valid: uploadInfo.validRecords,
+      invalid: uploadInfo.invalidRecords,
+    });
+
     this.queueService.publishToQueue(QueuesEnum.END_IMPORT, {
       uploadId: _uploadId,
       destination: destination,
+      uploadedFileId: uploadInfo._uploadedFileId,
     });
 
     return { uploadInfo, importedData };

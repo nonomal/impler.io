@@ -14,3 +14,7 @@ export * from './repositories/customization';
 export * from './repositories/validator';
 export * from './repositories/webhook-destination';
 export * from './repositories/bubble-destination';
+export * from './repositories/jobmapping';
+export * from './repositories/user-job';
+export * from './repositories/import-job-history';
+export * from './repositories/project-invitation';

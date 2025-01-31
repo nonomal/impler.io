@@ -3,14 +3,25 @@ import { Writable } from 'stream';
 import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 
 import { APIMessages } from '@shared/constants';
+import { EMAIL_SUBJECT } from '@impler/shared';
 import { BaseReview } from './base-review.usecase';
+import { UniqueWithValidationType, ValidationTypesEnum } from '@impler/client';
 import { BATCH_LIMIT } from '@shared/services/sandbox';
 import { StorageService, PaymentAPIService, EmailService } from '@impler/services';
 import { ColumnTypesEnum, UploadStatusEnum, ITemplateSchemaItem, ColumnDelimiterEnum } from '@impler/shared';
-import { UploadRepository, ValidatorRepository, FileRepository, DalService, TemplateEntity } from '@impler/dal';
+import {
+  UploadRepository,
+  ValidatorRepository,
+  FileRepository,
+  DalService,
+  TemplateEntity,
+  TemplateRepository,
+  RecordEntity,
+} from '@impler/dal';
 
 interface ISaveResults {
   uploadId: string;
+  _templateId: string;
   totalRecords: number;
   validRecords: number;
   invalidRecords: number;
@@ -18,9 +29,10 @@ interface ISaveResults {
 
 @Injectable()
 export class DoReview extends BaseReview {
-  private _modal: Model<unknown>;
+  private _modal: Model<RecordEntity>;
 
   constructor(
+    private templateRepository: TemplateRepository,
     private storageService: StorageService,
     private uploadRepository: UploadRepository,
     private validatorRepository: ValidatorRepository,
@@ -33,7 +45,7 @@ export class DoReview extends BaseReview {
   }
 
   async execute(_uploadId: string) {
-    this._modal = await this.dalService.createRecordCollection(_uploadId);
+    this._modal = this.dalService.getRecordCollection(_uploadId);
     const userEmail = await this.uploadRepository.getUserEmailFromUploadId(_uploadId);
 
     const uploadInfo = await this.uploadRepository.getUploadWithTemplate(_uploadId, ['name']);
@@ -45,18 +57,50 @@ export class DoReview extends BaseReview {
     const columns = JSON.parse(uploadInfo.customSchema);
     const multiSelectColumnHeadings: Record<string, string> = {};
     const numberColumnHeadings = new Set<string>();
+    const validationErrorMessages = {};
+    const uniqueColumnKeysCombinationMap = new Map<string, Set<string>>();
     (columns as ITemplateSchemaItem[]).forEach((column) => {
       if (column.type === ColumnTypesEnum.SELECT && column.allowMultiSelect)
         multiSelectColumnHeadings[column.key] = column.delimiter || ColumnDelimiterEnum.COMMA;
       if (column.type === ColumnTypesEnum.NUMBER || column.type === ColumnTypesEnum.DOUBLE)
         numberColumnHeadings.add(column.key);
+      if (Array.isArray(column.validations) && column.validations.length > 0) {
+        validationErrorMessages[column.key] = {};
+        column.validations.forEach((validation) => {
+          validationErrorMessages[column.key][validation.validate] = validation.errorMessage;
+          if (validation.validate === ValidationTypesEnum.UNIQUE_WITH) {
+            if (uniqueColumnKeysCombinationMap.has((validation as UniqueWithValidationType).uniqueKey)) {
+              uniqueColumnKeysCombinationMap.set(
+                (validation as UniqueWithValidationType).uniqueKey,
+                new Set([
+                  ...uniqueColumnKeysCombinationMap.get((validation as UniqueWithValidationType).uniqueKey),
+                  column.key,
+                ])
+              );
+            } else {
+              uniqueColumnKeysCombinationMap.set(
+                (validation as UniqueWithValidationType).uniqueKey,
+                new Set([column.key])
+              );
+            }
+          }
+        });
+      }
     });
     const schema = this.buildAJVSchema({
       columns,
       dateFormats,
       uniqueItems,
     });
-    const ajv = this.getAjvValidator(dateFormats, uniqueItems);
+
+    const uniqueCombinations = {};
+    uniqueColumnKeysCombinationMap.forEach((value, key) => {
+      if (value.size > 1) {
+        uniqueCombinations[this.getUniqueKey(key)] = Array.from(value);
+        schema[this.getUniqueKey(key)] = true;
+      }
+    });
+    const ajv = this.getAjvValidator(dateFormats, uniqueItems, uniqueCombinations);
     const validator = ajv.compile(schema);
 
     const uploadedFileInfo = await this.fileRepository.findById(uploadInfo._uploadedFileId, 'path');
@@ -65,7 +109,13 @@ export class DoReview extends BaseReview {
       'onBatchInitialize'
     );
 
-    let response: ISaveResults;
+    const response: ISaveResults = {
+      _templateId: (uploadInfo._templateId as unknown as TemplateEntity)._id,
+      uploadId: _uploadId,
+      totalRecords: 0,
+      validRecords: 0,
+      invalidRecords: 0,
+    };
 
     const csvFileStream = await this.storageService.getFileStream(uploadedFileInfo.path);
     const { dataStream } = this.getStreams({
@@ -85,16 +135,12 @@ export class DoReview extends BaseReview {
         extra: uploadInfo.extra,
         dataStream, // not-used
         dateFormats,
+        uniqueCombinations,
         numberColumnHeadings,
         multiSelectColumnHeadings,
+        validationErrorMessages,
+        headerRow: uploadInfo.headerRow,
       });
-
-      response = {
-        uploadId: _uploadId,
-        totalRecords: 0,
-        validRecords: 0,
-        invalidRecords: 0,
-      };
 
       await this.processBatches({
         batches,
@@ -120,7 +166,7 @@ export class DoReview extends BaseReview {
             },
           });
           errorEmailContents.push({
-            subject: `🛑 Encountered error while executing validation code in ${
+            subject: `${EMAIL_SUBJECT.ERROR_EXECUTING_VALIDATION_CODE} ${
               (uploadInfo._templateId as unknown as TemplateEntity).name
             }`,
             content: emailContent,
@@ -128,7 +174,7 @@ export class DoReview extends BaseReview {
         },
       });
     } else {
-      response = await this.normalRun({
+      const { invalidRecords, totalRecords, uploadId, validRecords } = await this.normalRun({
         csvFileStream,
         dataStream,
         extra: uploadInfo.extra,
@@ -136,9 +182,16 @@ export class DoReview extends BaseReview {
         uploadId: _uploadId,
         validator,
         dateFormats,
+        uniqueCombinations,
         numberColumnHeadings,
+        validationErrorMessages,
         multiSelectColumnHeadings,
+        headerRow: uploadInfo.headerRow,
       });
+      response.invalidRecords = invalidRecords;
+      response.totalRecords = totalRecords;
+      response.uploadId = uploadId;
+      response.validRecords = validRecords;
     }
     for (const errorEmailContent of errorEmailContents) {
       await this.emailService.sendEmail({
@@ -182,7 +235,7 @@ export class DoReview extends BaseReview {
     };
   }
 
-  private async saveResults({ uploadId, totalRecords, validRecords, invalidRecords }: ISaveResults) {
+  private async saveResults({ uploadId, totalRecords, validRecords, invalidRecords, _templateId }: ISaveResults) {
     await this.uploadRepository.update(
       { _id: uploadId },
       {
@@ -190,6 +243,18 @@ export class DoReview extends BaseReview {
         totalRecords,
         validRecords,
         invalidRecords,
+      }
+    );
+    await this.templateRepository.findOneAndUpdate(
+      {
+        _id: _templateId,
+      },
+      {
+        $inc: {
+          totalUploads: 1,
+          totalRecords: totalRecords,
+          totalInvalidRecords: invalidRecords,
+        },
       }
     );
     const userExternalIdOrEmail = await this.uploadRepository.getUserEmailFromUploadId(uploadId);

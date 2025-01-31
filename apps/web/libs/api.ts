@@ -33,9 +33,20 @@ const routes: Record<string, Route> = {
     url: (paymentMethodId: string) => `/v1/user/setup-intent/${paymentMethodId}`,
     method: 'PUT',
   },
+
+  [API_KEYS.UPDATE_SUBSCRIPTION_PAYMENT_METHOD]: {
+    url: (paymentMethodId: string) => `/v1/user/subscription-payment-method/${paymentMethodId}`,
+    method: 'PUT',
+  },
+
   [API_KEYS.SAVE_INTENT_ID]: {
     url: (intentId: string) => `/v1/user/confirm-payment-intent-id/${intentId}`,
     method: 'PUT',
+  },
+
+  [API_KEYS.SUBSCRIBE]: {
+    url: () => `/v1/user/subscribe`,
+    method: 'GET',
   },
 
   [API_KEYS.FETCH_ACTIVE_SUBSCRIPTION]: {
@@ -46,6 +57,59 @@ const routes: Record<string, Route> = {
     url: () => `/v1/user/subscription`,
     method: 'DELETE',
   },
+  [API_KEYS.ONBOARD_USER]: {
+    url: () => '/v1/auth/onboard',
+    method: 'POST',
+  },
+
+  [API_KEYS.PROJECT_INVITATION]: {
+    url: () => `/v1/team`,
+    method: 'POST',
+  },
+
+  [API_KEYS.SENT_TEAM_INVITATIONS]: {
+    url: () => `/v1/team/invitations`,
+    method: 'GET',
+  },
+
+  [API_KEYS.GET_TEAM_INVITATIONS]: {
+    url: (id: string) => `/v1/team/${id}`,
+    method: 'GET',
+  },
+
+  [API_KEYS.ACCEPT_TEAM_INVITATION]: {
+    url: (invitationId: string) => `/v1/team/${invitationId}/accept`,
+    method: 'POST',
+  },
+
+  [API_KEYS.DECLINE_TEAM_INVITATION]: {
+    url: (invitationId: string) => `/v1/team/${invitationId}/decline`,
+    method: 'DELETE',
+  },
+
+  [API_KEYS.LIST_TEAM_MEMBERS]: {
+    url: () => `/v1/team/members`,
+    method: 'GET',
+  },
+
+  [API_KEYS.UPDATE_TEAM_MEMBER_ROLE]: {
+    url: (memberId: string) => `/v1/team/${memberId}`,
+    method: 'PUT',
+  },
+
+  [API_KEYS.DELETE_TEAM_MEMBER]: {
+    url: (memberId: string) => `/v1/team/${memberId}`,
+    method: 'DELETE',
+  },
+
+  [API_KEYS.REVOKE_INVITATION]: {
+    url: (invitationId: string) => `/v1/team/${invitationId}/revoke`,
+    method: 'DELETE',
+  },
+  [API_KEYS.TEAM_MEMBER_META]: {
+    url: (projectId: string) => `/v1/team/${projectId}/members`,
+    method: 'GET',
+  },
 
   [API_KEYS.PROJECTS_LIST]: {
     url: () => '/v1/project',
@@ -55,6 +119,12 @@ const routes: Record<string, Route> = {
     url: () => '/v1/project',
     method: 'POST',
   },
+
+  [API_KEYS.PROJECT_DELETE]: {
+    url: (projectId: string) => `/v1/project/${projectId}`,
+    method: 'DELETE',
+  },
+
   [API_KEYS.PROJECT_SWITCH]: {
     url: (projectId) => `/v1/project/switch/${projectId}`,
     method: 'PUT',
@@ -63,6 +133,7 @@ const routes: Record<string, Route> = {
     url: (projectId) => `/v1/project/${projectId}/environment`,
     method: 'GET',
   },
+
   [API_KEYS.LOGOUT]: {
     url: () => '/v1/auth/logout',
     method: 'GET',
@@ -75,8 +146,21 @@ const routes: Record<string, Route> = {
     url: () => '/v1/auth/register',
     method: 'POST',
   },
+
+  [API_KEYS.VERIFY_EMAIL]: {
+    url: () => '/v1/auth/verify',
+    method: 'POST',
+  },
   [API_KEYS.REQUEST_FORGOT_PASSWORD]: {
     url: () => '/v1/auth/forgot-password/request',
+    method: 'POST',
+  },
+  [API_KEYS.RESET_PASSWORD]: {
+    url: () => `/v1/auth/forgot-password/reset`,
+    method: 'POST',
+  },
+  [API_KEYS.RESEND_OTP]: {
+    url: () => `/v1/auth/verify/resend`,
     method: 'POST',
   },
   [API_KEYS.RESET_PASSWORD]: {
@@ -86,6 +170,10 @@ const routes: Record<string, Route> = {
   [API_KEYS.ME]: {
     url: () => `/v1/auth/me`,
     method: 'GET',
+  },
+  [API_KEYS.UPDATE_ME_INFO]: {
+    url: () => `/v1/auth/me`,
+    method: 'PUT',
   },
   [API_KEYS.IMPORT_COUNT]: {
     url: () => `/v1/user/import-count`,

@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import * as ExcelJS from 'exceljs';
+import * as exceljs from 'exceljs';
 import { cwd } from 'node:process';
 import * as xlsxPopulate from 'xlsx-populate';
 import { CONSTANTS } from '@shared/constants';
@@ -45,28 +45,7 @@ export class ExcelFileService {
 
     return name;
   }
-  addSelectValidation({
-    ws,
-    range,
-    keyName,
-    isRequired,
-  }: {
-    ws: ExcelJS.Worksheet;
-    range: string;
-    keyName: string;
-    isRequired: boolean;
-  }) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    ws.dataValidations.add(range, {
-      type: 'list',
-      allowBlank: !isRequired,
-      formulae: [`${keyName}!$A$2:$A$9999`],
-      showErrorMessage: true,
-      errorTitle: 'Invalid Value',
-      error: 'Please select from the list',
-    });
-  }
+
   getExcelColumnNameFromIndex(columnNumber: number) {
     // To store result (Excel column name)
     const columnName = [];
@@ -91,7 +70,7 @@ export class ExcelFileService {
 
     return columnName.reverse().join('');
   }
-  async getExcelFileForHeadings(headings: IExcelFileHeading[], data?: Record<string, any>[]): Promise<Buffer> {
+  async getExcelFileForHeadings(headings: IExcelFileHeading[], data?: string): Promise<Buffer> {
     const currentDir = cwd();
     const isMultiSelect = headings.some(
       (heading) => heading.type === ColumnTypesEnum.SELECT && heading.allowMultiSelect
@@ -100,15 +79,17 @@ export class ExcelFileService {
       `${currentDir}/src/config/${isMultiSelect ? 'Excel Multi Select Template.xlsm' : 'Excel Template.xlsx'}`
     );
     const worksheet = workbook.sheet('Data');
+    const multiSelectHeadings = {};
 
     headings.forEach((heading, index) => {
       const columnName = this.getExcelColumnNameFromIndex(index + 1);
       const columnHeadingCellName = columnName + '1';
-      if (heading.type === ColumnTypesEnum.SELECT && heading.allowMultiSelect)
+      if (heading.type === ColumnTypesEnum.SELECT && heading.allowMultiSelect) {
         worksheet
           .cell(columnHeadingCellName)
           .value(heading.key + '#MULTI' + '#' + (heading.delimiter || ColumnDelimiterEnum.COMMA));
-      else worksheet.cell(columnHeadingCellName).value(heading.key);
+        multiSelectHeadings[heading.key] = heading.delimiter || ColumnDelimiterEnum.COMMA;
+      } else worksheet.cell(columnHeadingCellName).value(heading.key);
       worksheet.column(columnName).style('numberFormat', '@');
     });
 
@@ -135,14 +116,26 @@ export class ExcelFileService {
       }
     });
     const headingNames = headings.map((heading) => heading.key);
-    const endColumnPosition = this.getExcelColumnNameFromIndex(headings.length + 1) + '2';
-    const range = workbook.sheet(0).range(`A2:${endColumnPosition}`);
-    if (Array.isArray(data) && data.length > 0) {
-      const rows: string[][] = data.reduce<string[][]>((acc: string[][], rowItem: Record<string, any>) => {
-        acc.push(headingNames.map((headingKey) => rowItem[headingKey]));
+    const endColumnPosition = this.getExcelColumnNameFromIndex(headings.length + 1);
+
+    let parsedData = [];
+    try {
+      if (data) parsedData = JSON.parse(data);
+    } catch (error) {}
+    if (Array.isArray(parsedData) && parsedData.length > 0) {
+      const rows: string[][] = parsedData.reduce<string[][]>((acc: string[][], rowItem: Record<string, any>) => {
+        acc.push(
+          headingNames.map((headingKey) =>
+            multiSelectHeadings[headingKey] && Array.isArray(rowItem[headingKey])
+              ? rowItem[headingKey].join(multiSelectHeadings[headingKey])
+              : rowItem[headingKey]
+          )
+        );
 
         return acc;
       }, []);
+      const rangeKey = `A2:${endColumnPosition}${rows.length + 1}`;
+      const range = workbook.sheet(0).range(rangeKey);
       range.value(rows);
     }
     const buffer = await workbook.outputAsync();
@@ -159,9 +152,60 @@ export class ExcelFileService {
       }
     });
   }
+  getExcelRowsColumnsCount(file: Express.Multer.File, sheetName?: string): Promise<{ rows: number; columns: number }> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const workbook = new exceljs.Workbook();
+        await workbook.xlsx.load(file.buffer);
+        const worksheet = workbook.getWorksheet(sheetName || workbook.worksheets[0].name);
+
+        resolve({
+          columns: worksheet.actualColumnCount,
+          rows: worksheet.actualRowCount,
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 }
 
 export class CSVFileService2 {
+  getCSVMetaInfo(file: string | Express.Multer.File, options?: ParseConfig) {
+    return new Promise<{ rows: number; columns: number }>((resolve, reject) => {
+      let fileContent = '';
+      if (typeof file === 'string') {
+        fileContent = file;
+      } else {
+        fileContent = file.buffer.toString(FileEncodingsEnum.CSV);
+      }
+      let rows = 0;
+      let columns = 0;
+
+      parse(fileContent, {
+        ...(options || {}),
+        dynamicTyping: false,
+        skipEmptyLines: 'greedy',
+        step: function (results) {
+          rows++;
+          if (Array.isArray(results.data)) {
+            columns = results.data.length;
+          }
+        },
+        complete: function () {
+          resolve({ rows, columns });
+        },
+        error: (error) => {
+          if (error.message.includes('Parse Error')) {
+            reject(new InvalidFileException());
+          } else {
+            reject(error);
+          }
+        },
+      });
+    });
+  }
+
   getFileHeaders(file: string | Express.Multer.File, options?: ParseConfig): Promise<string[]> {
     return new Promise((resolve, reject) => {
       let fileContent = '';

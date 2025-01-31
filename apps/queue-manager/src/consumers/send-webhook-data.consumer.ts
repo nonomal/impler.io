@@ -9,6 +9,7 @@ import {
   ColumnTypesEnum,
   ColumnDelimiterEnum,
   StatusEnum,
+  EMAIL_SUBJECT,
 } from '@impler/shared';
 import { FileNameService, StorageService, EmailService } from '@impler/services';
 import {
@@ -65,6 +66,7 @@ export class SendWebhookDataConsumer extends BaseConsumer {
         recordFormat: cachedData.recordFormat,
         chunkFormat: cachedData.chunkFormat,
         totalRecords: allDataJson.length,
+        imageHeadings: cachedData.imageHeadings,
         multiSelectHeadings: cachedData.multiSelectHeadings,
       });
 
@@ -117,6 +119,7 @@ export class SendWebhookDataConsumer extends BaseConsumer {
     chunkFormat,
     recordFormat,
     extra = '',
+    imageHeadings,
     multiSelectHeadings,
   }: IBuildSendDataParameters): { sendData: Record<string, unknown>; page: number } {
     const defaultValuesObj = JSON.parse(defaultValues);
@@ -124,11 +127,18 @@ export class SendWebhookDataConsumer extends BaseConsumer {
       Math.max((page - DEFAULT_PAGE) * chunkSize, MIN_LIMIT),
       Math.min(page * chunkSize, data.length)
     );
-    if (multiSelectHeadings && Object.keys(multiSelectHeadings).length > 0) {
+    if ((multiSelectHeadings && Object.keys(multiSelectHeadings).length > 0) || imageHeadings?.length > 0) {
       slicedData = slicedData.map((obj) => {
         Object.keys(multiSelectHeadings).forEach((heading) => {
           obj.record[heading] = obj.record[heading] ? obj.record[heading].split(multiSelectHeadings[heading]) : [];
         });
+
+        if (imageHeadings?.length > 0)
+          imageHeadings.forEach((heading) => {
+            obj.record[heading] = obj.record[heading]
+              ? `${process.env.API_ROOT_URL}/v1/upload/${uploadId}/asset/${obj.record[heading]}`
+              : '';
+          });
 
         return obj;
       });
@@ -171,12 +181,14 @@ export class SendWebhookDataConsumer extends BaseConsumer {
 
     const defaultValueObj = {};
     const multiSelectHeadings = {};
+    const imageHeadings = [];
     const customSchema = JSON.parse(uploadata.customSchema) as ITemplateSchemaItem[];
     if (Array.isArray(customSchema)) {
       customSchema.forEach((item: ITemplateSchemaItem) => {
         if (item.defaultValue) defaultValueObj[item.key] = item.defaultValue;
         if (item.type === ColumnTypesEnum.SELECT && item.allowMultiSelect)
           multiSelectHeadings[item.key] = item.delimiter || ColumnDelimiterEnum.COMMA;
+        if (item.type === ColumnTypesEnum.IMAGE) imageHeadings.push(item.key);
       });
     }
 
@@ -195,6 +207,7 @@ export class SendWebhookDataConsumer extends BaseConsumer {
       recordFormat: uploadata.customRecordFormat,
       chunkFormat: uploadata.customChunkFormat,
       multiSelectHeadings,
+      imageHeadings,
       email: userEmail,
     };
   }
@@ -214,7 +227,7 @@ export class SendWebhookDataConsumer extends BaseConsumer {
 
       await this.emailService.sendEmail({
         to: userEmail,
-        subject: `🛑 Encountered error while sending webhook data in ${importName}`,
+        subject: `${EMAIL_SUBJECT.ERROR_SENDING_WEBHOOK_DATA} ${importName}`,
         html: emailContents,
         from: process.env.ALERT_EMAIL_FROM,
         senderName: process.env.EMAIL_FROM_NAME,

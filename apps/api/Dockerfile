@@ -1,4 +1,4 @@
-FROM node:18.16.1-bullseye-slim
+FROM node:20.13.1-bullseye-slim
 
 COPY apps/api/src/config/default.cf /usr/local/etc/isolate
 
@@ -22,6 +22,7 @@ COPY package.json .
 COPY .npmrc .
 
 COPY apps/api ./apps/api
+COPY packages/client ./packages/client
 COPY libs/dal ./libs/dal
 COPY libs/shared ./libs/shared
 COPY libs/services ./libs/services

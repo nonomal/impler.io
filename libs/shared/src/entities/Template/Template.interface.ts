@@ -1,3 +1,5 @@
+import { IntegrationEnum } from '../../types';
+
 export interface ITemplate {
   _id: string;
   name: string;
@@ -9,7 +11,10 @@ export interface ITemplate {
   totalColumns: number;
   totalUploads: number;
   totalRecords: number;
+  imageColumns: string[];
   totalInvalidRecords: number;
+  mode: string;
+  integration: IntegrationEnum;
 }
 
 export interface IImport {

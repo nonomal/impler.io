@@ -1,4 +1,5 @@
 import React from 'react';
+import { Global } from '@emotion/react';
 import Head from 'next/head';
 import getConfig from 'next/config';
 import { Poppins } from 'next/font/google';
@@ -22,7 +23,11 @@ const { publicRuntimeConfig } = getConfig();
 if (typeof window !== 'undefined' && publicRuntimeConfig.NEXT_PUBLIC_AMPLITUDE_ID) {
   init(publicRuntimeConfig.NEXT_PUBLIC_AMPLITUDE_ID, {
     defaultTracking: {
+      sessions: false,
+      pageViews: false,
       attribution: false,
+      fileDownloads: false,
+      formInteractions: false,
     },
   });
 }
@@ -33,6 +38,11 @@ const client = new QueryClient({
       refetchOnWindowFocus: false,
       retry: false,
       onError: async (err: any) => {
+        const path = window.location.pathname;
+        const isApplicationPath =
+          ![ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.REQUEST_FORGOT_PASSWORD].includes(path) &&
+          !path.startsWith(ROUTES.RESET_PASSWORD) &&
+          !path.startsWith('/auth/invitation');
         if (err && err.message === 'Failed to fetch') {
           track({
             name: 'ERROR',
@@ -41,14 +51,14 @@ const client = new QueryClient({
             },
           });
           notify(NOTIFICATION_KEYS.ERROR_OCCURED);
-          window.location.href = ROUTES.SIGNIN;
+          if (isApplicationPath) window.location.href = ROUTES.SIGNIN;
         } else if (err && err.statusCode === 401) {
           await commonApi(API_KEYS.LOGOUT as any, {});
           track({
             name: 'LOGOUT',
             properties: {},
           });
-          window.location.href = ROUTES.SIGNIN;
+          if (isApplicationPath) window.location.href = ROUTES.SIGNIN;
         }
       },
     },
@@ -92,44 +102,69 @@ export default function MyApp({ Component, pageProps }: AppProps) {
       </Head>
       <QueryClientProvider client={client}>
         <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
-          <MantineProvider
-            theme={{ ...mantineConfig, colorScheme, fontFamily: poppinsFont.style.fontFamily }}
-            withGlobalStyles
-            withNormalizeCSS
-          >
-            <Notifications />
-            <ModalsProvider
-              modalProps={{
-                styles: {
-                  title: {
-                    color: colorScheme === 'dark' ? colors.white : colors.black,
-                  },
-                  content: {
-                    backgroundColor: colorScheme === 'dark' ? colors.black : colors.white,
-                    borderRadius: 0,
-                    boxShadow: 'none',
-                    // flex: `0 0 40rem !important`,
-                  },
-                  header: {
-                    backgroundColor: colorScheme === 'dark' ? colors.black : colors.white,
-                  },
-                  overlay: {
-                    // eslint-disable-next-line no-magic-numbers
-                    backgroundColor: addOpacityToHex(colorScheme === 'dark' ? colors.white : colors.black, 0.2),
-                    backdropFilter: 'blur(5px)',
-                  },
+          <StoreWrapper>
+            <Global
+              styles={{
+                /* width */
+                '::-webkit-scrollbar': {
+                  width: '5px',
+                  height: '5px',
+                },
+
+                /* Track */
+                '::-webkit-scrollbar-track': {
+                  boxShadow: 'inset 0 0 3px grey',
+                  borderRadius: '10px',
+                },
+
+                /* Handle */
+                '::-webkit-scrollbar-thumb': {
+                  background: colors.TXTGray,
+                  borderRadius: '10px',
                 },
               }}
+            />
+            <MantineProvider
+              theme={{
+                ...mantineConfig,
+                colorScheme,
+                fontFamily: poppinsFont.style.fontFamily,
+              }}
+              withGlobalStyles
+              withNormalizeCSS
             >
-              <StoreWrapper>
+              <Notifications />
+              <ModalsProvider
+                modalProps={{
+                  styles: {
+                    title: {
+                      color: colorScheme === 'dark' ? colors.white : colors.black,
+                    },
+                    content: {
+                      backgroundColor: colorScheme === 'dark' ? colors.black : colors.white,
+                      borderRadius: 0,
+                      boxShadow: 'none',
+                      // flex: `0 0 40rem !important`,
+                    },
+                    header: {
+                      backgroundColor: colorScheme === 'dark' ? colors.black : colors.white,
+                    },
+                    overlay: {
+                      // eslint-disable-next-line no-magic-numbers
+                      backgroundColor: addOpacityToHex(colorScheme === 'dark' ? colors.white : colors.black, 0.2),
+                      backdropFilter: 'blur(5px)',
+                    },
+                  },
+                }}
+              >
                 {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
                 {/* @ts-ignore */}
                 <Layout {...(Component.Layout ? { pageProps } : {})}>
                   <Component {...pageProps} />
                 </Layout>
-              </StoreWrapper>
-            </ModalsProvider>
-          </MantineProvider>
+              </ModalsProvider>
+            </MantineProvider>
+          </StoreWrapper>
         </ColorSchemeProvider>
       </QueryClientProvider>
     </>

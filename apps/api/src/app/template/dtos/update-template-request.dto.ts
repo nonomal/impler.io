@@ -1,5 +1,6 @@
+import { IntegrationEnum } from '@impler/shared';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
 
 export class UpdateTemplateRequestDto {
   @ApiProperty({
@@ -8,4 +9,19 @@ export class UpdateTemplateRequestDto {
   })
   @IsOptional()
   name?: string;
+
+  @ApiProperty({
+    description: 'Import Mode of the template',
+    nullable: false,
+  })
+  @IsOptional()
+  mode?: string;
+
+  @ApiProperty({
+    description: 'Update Where do the user wanted to integrate the import',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsEnum(IntegrationEnum)
+  integration?: IntegrationEnum;
 }

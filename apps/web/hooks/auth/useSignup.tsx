@@ -2,12 +2,15 @@ import jwt from 'jwt-decode';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
+import { notify } from '@libs/notify';
+import { API_KEYS, NOTIFICATION_KEYS, ROUTES } from '@config';
 import { commonApi } from '@libs/api';
 import { track } from '@libs/amplitude';
-import { API_KEYS, ROUTES } from '@config';
-import { IErrorObject, ILoginResponse } from '@impler/shared';
+import { useAppState } from 'store/app.context';
+import { handleRouteBasedOnScreenResponse } from '@shared/helpers';
+import { IErrorObject, ILoginResponse, SCREENS } from '@impler/shared';
 
 interface ISignupFormData {
   fullName: string;
@@ -15,15 +18,51 @@ interface ISignupFormData {
   password: string;
 }
 
+interface ISignupData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  invitationId?: string;
+}
+
 export function useSignup() {
-  const { push } = useRouter();
+  const { setProfileInfo } = useAppState();
+  const { push, query } = useRouter();
   const {
+    setValue,
     setError,
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ISignupFormData>();
+  } = useForm<ISignupFormData>({});
   const [errorMessage, setErrorMessage] = useState<IErrorObject | undefined>(undefined);
+  const [isInvitationLink, setIsInvitationLink] = useState<boolean | undefined>();
+  const invitationId = query.invitationId as string | undefined;
+
+  const { isLoading: isAcceptingInvitation, isError } = useQuery<any, IErrorObject, { email: string }>(
+    [API_KEYS.GET_TEAM_INVITATIONS, invitationId],
+    () =>
+      commonApi(API_KEYS.GET_TEAM_INVITATIONS as any, {
+        parameters: [invitationId!],
+      }),
+    {
+      enabled: !!invitationId,
+      onSuccess: (data) => {
+        setValue('email', data.email);
+        setIsInvitationLink(true);
+      },
+      onError: (error) => {
+        notify(NOTIFICATION_KEYS.ERROR_FETCHING_INVITATION, {
+          title: 'Problem with Invitation Link',
+          message: error?.message || 'Error while accepting invitation',
+          color: 'red',
+        });
+        push(ROUTES.SIGNUP, {}, { shallow: true });
+      },
+    }
+  );
+
   const { mutate: signup, isLoading: isSignupLoading } = useMutation<
     ILoginResponse,
     IErrorObject,
@@ -33,6 +72,7 @@ export function useSignup() {
     onSuccess: (data) => {
       if (!data) return;
       const profileData = jwt<IProfileData>(data.token as string);
+      setProfileInfo(profileData);
       track({
         name: 'SIGNUP',
         properties: {
@@ -42,9 +82,8 @@ export function useSignup() {
           id: profileData._id,
         },
       });
-      if (data.showAddProject) {
-        push(ROUTES.SIGNIN_ONBOARDING);
-      } else push(ROUTES.HOME);
+
+      handleRouteBasedOnScreenResponse(data.screen as SCREENS, push, invitationId ? [invitationId] : []);
     },
     onError(error) {
       if (error.error === 'EmailAlreadyExists') {
@@ -52,6 +91,7 @@ export function useSignup() {
           type: 'manual',
           message: 'Email already exists',
         });
+        track({ name: 'SIGNUP DUPLICATE EMAIL', properties: {} });
       } else {
         setErrorMessage(error);
       }
@@ -64,15 +104,20 @@ export function useSignup() {
       lastName: data.fullName.split(' ')[1],
       email: data.email,
       password: data.password,
+      invitationId,
     };
     signup(signupData);
   };
 
   return {
     errors,
+    isError,
     register,
+    invitationId,
     errorMessage,
     isSignupLoading,
+    isInvitationLink,
+    isAcceptingInvitation,
     signup: handleSubmit(onSignup),
   };
 }

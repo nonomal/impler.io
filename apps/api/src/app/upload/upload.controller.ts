@@ -11,6 +11,7 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
   Res,
   UploadedFile,
@@ -19,18 +20,20 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiSecurity, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiOkResponse } from '@nestjs/swagger';
 
+import { GetUpload, GetAsset } from './usecases';
 import { JwtAuthGuard } from '@shared/framework/auth.gaurd';
-import { validateNotFound } from '@shared/helpers/common.helper';
 import { validateUploadStatus } from '@shared/helpers/upload.helpers';
 import { PaginationResponseDto } from '@shared/dtos/pagination-response.dto';
-import { GetUpload } from '@shared/usecases/get-upload/get-upload.usecase';
 import { ValidateMongoId } from '@shared/validations/valid-mongo-id.validation';
 import { ValidateTemplate } from '@shared/validations/valid-template.validation';
 import { ValidImportFile } from '@shared/validations/valid-import-file.validation';
+import { getAssetMimeType, validateNotFound } from '@shared/helpers/common.helper';
 
+import { SetHeaderDto } from './dtos/set-header.dto';
 import { UploadRequestDto } from './dtos/upload-request.dto';
-import { MakeUploadEntryCommand } from './usecases/make-upload-entry/make-upload-entry.command';
 import {
+  SetHeaderRow,
+  GetPreviewRows,
   TerminateUpload,
   MakeUploadEntry,
   GetUploadColumns,
@@ -45,7 +48,10 @@ import {
 @UseGuards(JwtAuthGuard)
 export class UploadController {
   constructor(
+    private getAsset: GetAsset,
     private getUpload: GetUpload,
+    private setHeaderRow: SetHeaderRow,
+    private getPreviewRows: GetPreviewRows,
     private terminateUpload: TerminateUpload,
     private makeUploadEntry: MakeUploadEntry,
     private getUploadColumns: GetUploadColumns,
@@ -71,17 +77,18 @@ export class UploadController {
     @Param('templateId', ValidateTemplate) templateId: string,
     @UploadedFile('file', ValidImportFile) file: Express.Multer.File
   ) {
-    return this.makeUploadEntry.execute(
-      MakeUploadEntryCommand.create({
-        file: file,
-        templateId,
-        extra: body.extra,
-        schema: body.schema,
-        output: body.output,
-        authHeaderValue: body.authHeaderValue,
-        selectedSheetName: body.selectedSheetName,
-      })
-    );
+    return this.makeUploadEntry.execute({
+      file: file,
+      templateId,
+      extra: body.extra,
+      schema: body.schema,
+      output: body.output,
+      importId: body.importId,
+      imageSchema: body.imageSchema,
+
+      authHeaderValue: body.authHeaderValue,
+      selectedSheetName: body.selectedSheetName,
+    });
   }
 
   @Get(':uploadId')
@@ -133,6 +140,42 @@ export class UploadController {
     res.setHeader('Content-Type', type);
     res.setHeader('Content-Disposition', 'attachment; filename=' + name);
     content.pipe(res);
+  }
+
+  @Get(':uploadId/asset/:name')
+  @ApiOperation({
+    summary: 'Get uploaded asset file',
+  })
+  async getUploadedAsset(
+    @Param('uploadId', ValidateMongoId) uploadId: string,
+    @Param('name') assetName: string,
+    @Res() res: Response
+  ) {
+    const content = await this.getAsset.execute(uploadId, assetName);
+    res.setHeader('Content-Type', getAssetMimeType(assetName));
+    res.setHeader('Content-Disposition', 'attachment; filename=' + assetName);
+    content.pipe(res);
+  }
+
+  @Get(':uploadId/preview')
+  @ApiOperation({
+    summary: 'Get rows of the uploaded file',
+  })
+  async getPreviewRowsRoute(@Param('uploadId') uploadId: string) {
+    const uploadData = await this.getUploadProcessInfo.execute(uploadId);
+
+    // throw error if upload information not found
+    validateNotFound(uploadData, 'upload');
+
+    return this.getPreviewRows.execute((uploadData._uploadedFileId as unknown as FileEntity).path);
+  }
+
+  @Put(':uploadId/header')
+  @ApiOperation({
+    summary: 'Set header row of the uploaded file',
+  })
+  async setHeaderRowRoute(@Param('uploadId') uploadId: string, @Body() body: SetHeaderDto) {
+    await this.setHeaderRow.execute(uploadId, body);
   }
 
   @Get(':uploadId/rows/valid')

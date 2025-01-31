@@ -6,7 +6,9 @@ import { commonApi } from '@libs/api';
 import { notify } from '@libs/notify';
 import { track } from '@libs/amplitude';
 import { useAppState } from 'store/app.context';
+import { usePlanMetaData } from 'store/planmeta.store.context';
 import { ITemplate, IErrorObject, IColumn } from '@impler/shared';
+import { IntegrationModal } from '@components/Integration/IntegrationModal';
 import { UpdateImportForm } from '@components/imports/forms/UpdateImportForm';
 import { API_KEYS, MODAL_KEYS, MODAL_TITLES, NOTIFICATION_KEYS, ROUTES } from '@config';
 
@@ -16,6 +18,7 @@ interface useImportDetailProps {
 
 export function useImportDetails({ templateId }: useImportDetailProps) {
   const router = useRouter();
+  const { meta } = usePlanMetaData();
   const queryClient = useQueryClient();
   const { profileInfo } = useAppState();
   const {
@@ -79,6 +82,29 @@ export function useImportDetails({ templateId }: useImportDetailProps) {
     });
   };
 
+  const onIntegrationClick = () => {
+    track({
+      name: 'INTEGRATE',
+      properties: {},
+    });
+    if (templateData && profileInfo) {
+      modals.open({
+        modalId: MODAL_KEYS.INTEGRATION_DETAILS,
+        centered: true,
+        size: 'calc(70vw - 3rem)',
+        children: (
+          <IntegrationModal
+            templateId={templateData?._id}
+            projectId={templateData?._projectId}
+            accessToken={profileInfo?.accessToken}
+            integrations={templateData.integration}
+          />
+        ),
+        withCloseButton: false,
+      });
+    }
+  };
+
   const onUpdateClick = () => {
     if (templateData)
       modals.open({
@@ -103,8 +129,11 @@ export function useImportDetails({ templateId }: useImportDetailProps) {
     templateData,
     onUpdateClick,
     onDeleteClick,
+    onIntegrationClick,
     isColumnListLoading,
     isTemplateDataLoading,
     onSpreadsheetImported,
+    updateImport,
+    meta,
   };
 }

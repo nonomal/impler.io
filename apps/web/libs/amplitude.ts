@@ -25,6 +25,20 @@ type TrackData =
       };
     }
   | {
+      name: 'VERIFY';
+      properties: {
+        valid: boolean;
+      };
+    }
+  | {
+      name: 'RESEND VERIFICATION CODE';
+      properties: Record<string, never>;
+    }
+  | {
+      name: 'UPDATE EMAIL';
+      properties: Record<string, never>;
+    }
+  | {
       name: 'SIGNIN';
       properties: {
         id: string;
@@ -33,16 +47,32 @@ type TrackData =
     }
   | {
       name: 'IMPORT CREATE';
-      properties: Record<string, never>;
+      properties: {
+        framework: string;
+      };
     }
   | {
       name: 'OUTPUT FORMAT UPDATED';
       properties: Record<string, never>;
     }
   | {
+      name: 'SIGNUP DUPLICATE EMAIL';
+      properties: {
+        onVerify?: boolean;
+      };
+    }
+  | {
       name: 'PROJECT CREATE';
       properties: {
         duringOnboard: boolean;
+      };
+    }
+  | {
+      name: 'ONBOARD';
+      properties: {
+        companySize: string;
+        role: string;
+        source: string;
       };
     }
   | {
@@ -121,6 +151,38 @@ type TrackData =
   | {
       name: 'IMPORT CLICK';
       properties: Record<string, never>;
+    }
+  | {
+      name: 'VIEW PLANS';
+      properties: Record<string, never>;
+    }
+  | {
+      name: 'PLAN TOGGLE DURATION';
+      properties: {
+        yearly: boolean;
+      };
+    }
+  | {
+      name: 'SAVE VALIDATION';
+      properties: {
+        isValid: boolean;
+      };
+    }
+  | {
+      name: 'INTEGRATE';
+      properties: Record<string, never>;
+    }
+  | {
+      name: 'CHANGE INTEGRATION FRAMEWORK';
+      properties: {
+        framework: string;
+      };
+    }
+  | {
+      name: 'CHANGE INTEGRATION STEPS';
+      properties: {
+        step: string;
+      };
     };
 
 export function track({ name, properties }: TrackData) {

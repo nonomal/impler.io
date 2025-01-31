@@ -21,16 +21,23 @@ export const APIMessages = {
   PROJECT_WITH_TEMPLATE_MISSING: 'Template not found with provided ProjectId and Template',
   PROJECT_NOT_ASSIGNED: 'Project is not assigned to you',
   USER_NOT_FOUND: 'User is not found',
+  USER_JOB_NOT_FOUND: 'User-Job is not found',
   UNIQUE_EMAIL: 'Email address already in use',
   INCORRECT_LOGIN_CREDENTIALS: 'Incorrect email or password provided',
   OPERATION_NOT_ALLOWED: `You're not allowed to perform this action.`,
   EMAIL_ALREADY_EXISTS: 'Email already exists',
   INCORRECT_KEYS_FOUND: 'Invalid keys found! Please check and correct them from web',
   INVALID_AUTH_TOKEN: 'Invalid authentication token',
+  INVALID_RSS_URL: 'The Specified URL doesn`t contain any RSS XML Feed, Please enter a Valid RSS XML URL',
   COLUMN_KEY_TAKEN: 'Column with the same key already exists. Please provide a unique key from "Validations".',
-  COLUMN_KEY_DUPLICATED: 'Column with the same key already exists. Please provide a unique key.',
+  COLUMN_KEY_DUPLICATED: 'Column with the same key already exists. Please use a unique key in column.',
   ERROR_DURING_VALIDATION:
     'Something went wrong while validating data. Data is not imported yet, but team is informed about issue. Please try again after sometime.',
+  FEATURE_UNAVAILABLE: {
+    IMAGE_IMPORT: 'Image Import unavailable on current plan',
+    ADVANCED_VALIDATIONS: 'Advanced validations are unavailable on your current plan',
+  },
+  INVALID_VERIFICATION_CODE: 'Code you entered is invalid! Please try again or request new verification code!',
 };
 
 export const CONSTANTS = {
@@ -76,4 +83,16 @@ export const VARIABLES = {
 
 export const DATE_FORMATS = {
   COMMON: 'DD MMM YYYY',
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export enum LEAD_SIGNUP_USING {
+  GITHUB = 'Github',
+  EMAIL = 'Email',
+}
+
+export const CRON_SCHEDULE = {
+  DEFAULT_CRON_TIME: '45 23 * * *',
+  TEST_CRON_TIME: '* * * * *',
+  CRON_TIME: '45 23 * * *',
 };

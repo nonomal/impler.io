@@ -1,12 +1,6 @@
-import { IsOptional, IsArray, IsJSON } from 'class-validator';
-import { BaseCommand } from '@shared/commands/base.command';
-
-export class DownloadSampleCommand extends BaseCommand {
-  @IsArray()
-  @IsOptional()
-  data: Record<string, unknown>[];
-
-  @IsJSON()
-  @IsOptional()
+export class DownloadSampleDataCommand {
+  data?: string;
   schema?: string;
+  importId: string;
+  imageSchema?: string;
 }

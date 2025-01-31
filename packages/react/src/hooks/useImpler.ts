@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { EventTypesEnum, IShowPayload } from '@impler/shared';
-
-import { logError } from '../utils/logger';
-import { EventCalls, ShowWidgetProps, UseImplerProps } from '../types';
+import { isObject, EventTypes, logError, EventCalls, IShowWidgetProps, IUseImplerProps } from '@impler/client';
 
 export function useImpler({
   projectId,
@@ -11,33 +8,39 @@ export function useImpler({
   accessToken,
   authHeaderValue,
   title,
+  texts,
   extra,
+  config,
   onUploadComplete,
   onWidgetClose,
   onUploadStart,
   onDataImported,
   onUploadTerminate,
-}: UseImplerProps) {
+  onImportJobCreated,
+}: IUseImplerProps) {
   const [uuid] = useState(generateUuid());
   const [isImplerInitiated, setIsImplerInitiated] = useState(false);
 
   const onEventHappen = useCallback(
     (eventData: EventCalls) => {
       switch (eventData.type) {
-        case EventTypesEnum.UPLOAD_STARTED:
+        case EventTypes.UPLOAD_STARTED:
           if (onUploadStart) onUploadStart(eventData.value);
           break;
-        case EventTypesEnum.UPLOAD_TERMINATED:
+        case EventTypes.UPLOAD_TERMINATED:
           if (onUploadTerminate) onUploadTerminate(eventData.value);
           break;
-        case EventTypesEnum.UPLOAD_COMPLETED:
+        case EventTypes.UPLOAD_COMPLETED:
           if (onUploadComplete) onUploadComplete(eventData.value);
           break;
-        case EventTypesEnum.DATA_IMPORTED:
+        case EventTypes.DATA_IMPORTED:
           if (onDataImported) onDataImported(eventData.value);
           break;
-        case EventTypesEnum.CLOSE_WIDGET:
+        case EventTypes.CLOSE_WIDGET:
           if (onWidgetClose) onWidgetClose();
+          break;
+        case EventTypes.IMPORT_JOB_CREATED:
+          if (onImportJobCreated) onImportJobCreated(eventData.value);
           break;
       }
     },
@@ -74,33 +77,37 @@ export function useImpler({
     });
   }
 
-  const showWidget = async ({ colorScheme, data, schema, output }: ShowWidgetProps) => {
+  const showWidget = async ({
+    colorScheme,
+    data,
+    sampleFile,
+    schema,
+    output,
+  }: Pick<IShowWidgetProps, 'colorScheme' | 'data' | 'schema' | 'output' | 'sampleFile'> = {}) => {
     if (window.impler && isImplerInitiated) {
-      const payload: IShowPayload = {
+      const payload: IShowWidgetProps & { uuid: string; host: string } = {
         uuid,
         templateId,
-        data,
         host: '',
         projectId,
         accessToken,
+        schema,
+        data,
+        sampleFile,
+        output,
+        title,
+        extra,
+        config,
+        colorScheme,
+        primaryColor,
       };
-      if (Array.isArray(schema) && schema.length > 0) {
-        payload.schema = JSON.stringify(schema);
-      }
-      if (typeof output === 'object' && !Array.isArray(output) && output !== null) {
-        payload.output = JSON.stringify(output);
-      }
-      if (title) payload.title = title;
-      if (colorScheme) payload.colorScheme = colorScheme;
-      else {
+      if (!colorScheme) {
         const preferColorScheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         payload.colorScheme = preferColorScheme;
       }
-      if (primaryColor) payload.primaryColor = primaryColor;
-      if (extra) {
-        if (typeof extra === 'object') payload.extra = JSON.stringify(extra);
-        else payload.extra = extra;
-      }
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      if (isObject(texts)) payload.texts = JSON.stringify(texts);
       if (authHeaderValue) {
         if (typeof authHeaderValue === 'function' && authHeaderValue.constructor.name === 'AsyncFunction') {
           payload.authHeaderValue = await authHeaderValue();
@@ -113,8 +120,14 @@ export function useImpler({
         }
       }
       window.impler.show(payload);
-    }
+    } else logError('IMPLER_UNDEFINED_ERROR');
   };
 
-  return { isImplerInitiated, showWidget };
+  const closeWidget = () => {
+    if (window.impler) {
+      window.impler.close();
+    } else logError('IMPLER_UNDEFINED_ERROR');
+  };
+
+  return { isImplerInitiated, showWidget, closeWidget };
 }

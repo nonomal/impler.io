@@ -1,5 +1,16 @@
 import { ApiOperation, ApiTags, ApiSecurity, ApiQuery, ApiOkResponse } from '@nestjs/swagger';
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseArrayPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 
 import { APIMessages } from '@shared/constants';
 import { JwtAuthGuard } from '@shared/framework/auth.gaurd';
@@ -7,6 +18,7 @@ import { validateUploadStatus } from '@shared/helpers/upload.helpers';
 import { Defaults, ACCESS_KEY_NAME, UploadStatusEnum, ReviewDataTypesEnum } from '@impler/shared';
 
 import {
+  Replace,
   DoReview,
   GetUpload,
   DoReReview,
@@ -14,28 +26,27 @@ import {
   StartProcess,
   DeleteRecord,
   GetUploadData,
-  UpdateImportCount,
-  UpdateImportCountCommand,
+  UpdateRecords,
 } from './usecases';
 
-import { UpdateCellDto } from './dtos/update-cell.dto';
 import { validateNotFound } from '@shared/helpers/common.helper';
+import { DeleteRecordsDto, UpdateRecordDto, ReplaceDto } from './dtos';
 import { PaginationResponseDto } from '@shared/dtos/pagination-response.dto';
 import { ValidateMongoId } from '@shared/validations/valid-mongo-id.validation';
-import { ValidateIndexes } from '@shared/validations/valid-indexes.validation';
 
 @Controller('/review')
 @ApiTags('Review')
 @ApiSecurity(ACCESS_KEY_NAME)
 export class ReviewController {
   constructor(
+    private replace: Replace,
     private doReview: DoReview,
     private getUpload: GetUpload,
     private doReReview: DoReReview,
     private deleteRecord: DeleteRecord,
     private startProcess: StartProcess,
     private updateRecord: UpdateRecord,
-    private updateImportCount: UpdateImportCount,
+    private updateRecords: UpdateRecords,
     private getFileInvalidData: GetUploadData
   ) {}
 
@@ -124,14 +135,6 @@ export class ReviewController {
     // upload files with status reviewing can only be confirmed
     validateUploadStatus(uploadInformation.status as UploadStatusEnum, [UploadStatusEnum.REVIEWING]);
 
-    await this.updateImportCount.execute(
-      uploadInformation._templateId,
-      UpdateImportCountCommand.create({
-        totalRecords: uploadInformation.totalRecords,
-        totalInvalidRecords: uploadInformation.invalidRecords,
-      })
-    );
-
     return this.startProcess.execute(_uploadId);
   }
 
@@ -140,21 +143,40 @@ export class ReviewController {
   @ApiOperation({
     summary: 'Update review record for ongoing import',
   })
-  async updateReviewData(@Param('uploadId', ValidateMongoId) _uploadId: string, @Body() body: UpdateCellDto) {
-    await this.updateRecord.execute(_uploadId, body);
+  async updateReviewData(@Param('uploadId') _uploadId: string, @Body() body: UpdateRecordDto) {
+    return this.updateRecord.execute(_uploadId, body);
   }
 
-  @Delete(':uploadId/record')
+  @Put(':uploadId/records')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Delete review records for ongoing import',
+  })
+  async updateRecordsRoute(
+    @Param('uploadId') _uploadId: string,
+    @Body(new ParseArrayPipe({ items: UpdateRecordDto })) body: UpdateRecordDto[]
+  ) {
+    await this.updateRecords.execute(_uploadId, body);
+  }
+
+  @Post(':uploadId/delete-records')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Delete review record for ongoing import',
   })
   async deleteReviewRecord(
-    @Query('valid') valid: number,
-    @Query('invalid') invalid: number,
-    @Query('indexes', ValidateIndexes) indexes: string,
+    @Body() { indexes, valid, invalid }: DeleteRecordsDto,
     @Param('uploadId', ValidateMongoId) _uploadId: string
   ) {
-    await this.deleteRecord.execute(_uploadId, indexes.split(',').map(Number), valid, invalid);
+    await this.deleteRecord.execute(_uploadId, indexes, valid, invalid);
+  }
+
+  @Put(':uploadId/replace')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: 'Replace review data for ongoing import',
+  })
+  async replaceReviewData(@Param('uploadId', ValidateMongoId) _uploadId: string, @Body() body: ReplaceDto) {
+    return await this.replace.execute(_uploadId, body);
   }
 }

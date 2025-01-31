@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsMongoId } from 'class-validator';
+import { IsString, IsOptional, IsMongoId, IsEnum } from 'class-validator';
 import { BaseCommand } from '@shared/commands/base.command';
+import { IntegrationEnum } from '@impler/shared';
 
 export class UpdateTemplateCommand extends BaseCommand {
   @IsString()
@@ -11,4 +12,12 @@ export class UpdateTemplateCommand extends BaseCommand {
   })
   @IsOptional()
   _projectId?: string;
+
+  @IsString()
+  @IsOptional()
+  mode?: string;
+
+  @IsEnum(IntegrationEnum)
+  @IsOptional()
+  integration?: IntegrationEnum;
 }

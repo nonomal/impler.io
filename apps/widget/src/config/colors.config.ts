@@ -4,7 +4,6 @@ export const colors = {
   lightSuccess: '#F0FDF4',
   darkDeem: '#666666',
   lightDeem: '#CCCCCC',
-  lightGray: '#F8F8F8',
   black: '#000000',
   red: '#f03e3e',
   danger: '#AB3022',
@@ -12,4 +11,13 @@ export const colors = {
   light: '#F2F9FE',
   white: '#FFFFFF',
   gray: '#ebebeb',
+  yellow: '#F7B801',
+  // lightGray: '#EFEFEF',
+  lightGray: '#F8F8F8',
+  lightGrey: '#E3E3E3',
+  StrokeLight: '#666',
+
+  lightBlue: '#5462ff',
+  softBlue: '#edf3ff',
+  softGrey: '#868e96',
 };

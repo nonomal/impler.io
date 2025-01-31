@@ -5,6 +5,8 @@ export class ColumnEntity {
 
   key: string;
 
+  description?: string;
+
   alternateKeys?: string[];
 
   isRequired?: boolean;
@@ -32,4 +34,6 @@ export class ColumnEntity {
   _templateId: string;
 
   defaultValue?: string | number;
+
+  validations?: any[];
 }

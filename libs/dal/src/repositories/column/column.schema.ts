@@ -9,6 +9,7 @@ const columnSchema = new Schema(
     alternateKeys: [String],
     isRequired: Boolean,
     isUnique: Boolean,
+    description: String,
     isFrozen: Boolean,
     regex: String,
     allowMultiSelect: Boolean,
@@ -26,6 +27,7 @@ const columnSchema = new Schema(
     },
     defaultValue: Schema.Types.Mixed,
     type: String,
+    validations: Schema.Types.Mixed,
   },
   { ...schemaOptions }
 );

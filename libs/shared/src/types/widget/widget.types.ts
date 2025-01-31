@@ -1,25 +1,41 @@
-export interface IShowPayload {
+import { WIDGET_TEXTS, WidgetConfig } from '@impler/client';
+import { ISchemaItem } from '../column';
+
+export interface ICommonShowPayload {
   host: string;
-  extra?: string;
+  extra?: string | any;
   templateId?: string;
   authHeaderValue?: string;
   primaryColor?: string;
   colorScheme?: string;
   title?: string;
-  schema?: string;
-  data?: Record<string, string | any>[];
-  output?: string;
+  sampleFile?: File | Blob;
   projectId: string;
   accessToken: string;
   uuid: string;
 }
+export interface IWidgetShowPayload extends ICommonShowPayload {
+  texts?: typeof WIDGET_TEXTS;
+  config?: WidgetConfig;
+  data?: string;
+  schema?: string;
+  output?: string;
+}
+
+export interface IUserShowPayload extends ICommonShowPayload {
+  texts?: string | typeof WIDGET_TEXTS;
+  config?: WidgetConfig;
+  data?: string | Record<string, string | number>[];
+  schema?: string | ISchemaItem[];
+  output?: string | Record<string, string | number>;
+}
+
 export interface IOption {
   value: string;
   label: string;
 }
 export enum EventTypesEnum {
   INIT_IFRAME = 'INIT_IFRAME',
-  SHOW_WIDGET = 'SHOW_WIDGET',
   WIDGET_READY = 'WIDGET_READY',
   CLOSE_WIDGET = 'CLOSE_WIDGET',
   AUTHENTICATION_VALID = 'AUTHENTICATION_VALID',
@@ -28,4 +44,10 @@ export enum EventTypesEnum {
   UPLOAD_TERMINATED = 'UPLOAD_TERMINATED',
   UPLOAD_COMPLETED = 'UPLOAD_COMPLETED',
   DATA_IMPORTED = 'DATA_IMPORTED',
+  IMPORT_JOB_CREATED = 'IMPORT_JOB_CREATED',
+}
+
+export enum WidgetEventTypesEnum {
+  SHOW_WIDGET = 'SHOW_WIDGET',
+  CLOSE_WIDGET = 'CLOSE_WIDGET',
 }
